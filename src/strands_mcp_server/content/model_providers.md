@@ -67,29 +67,6 @@ anthropic_model = AnthropicModel(
 agent = Agent(model=anthropic_model)
 ```
 
-### Ollama (Local Models)
-
-First install the `ollama` python client:
-
-```bash
-pip install strands-agents[ollama]
-```
-
-Next, import and initialize the `OllamaModel` provider:
-
-```python
-from strands import Agent
-from strands.models.ollama import OllamaModel
-
-ollama_model = OllamaModel(
-    host="http://localhost:11434"  # Ollama server address
-    model_id="llama3",  # Specify which model to use
-    temperature=0.3,
-)
-
-agent = Agent(model=ollama_model)
-```
-
 ### LiteLLM
 
 LiteLLM is a unified interface for various LLM providers that allows you to interact with models from OpenAI and many others.
@@ -114,6 +91,55 @@ litellm_model = LiteLLMModel(
 )
 
 agent = Agent(model=litellm_model)
+```
+
+### Llama API
+
+Llama API is a Meta-hosted API service that helps you integrate Llama models into your applications quickly and efficiently.
+
+First install the `` python client:
+```bash
+pip install strands-agents[llamaapi]
+```
+
+Next, import and initialize the `LlamaAPIModel` provider:
+
+```python
+from strands import Agent
+from strands.models.llamaapi import LLamaAPIModel
+
+model = LlamaAPIModel(
+    client_args={
+        "api_key": "<KEY>",
+    },
+    # **model_config
+    model_id="Llama-4-Maverick-17B-128E-Instruct-FP8",
+)
+
+agent = Agent(models=LLamaAPIModel)
+```
+
+### Ollama (Local Models)
+
+First install the `ollama` python client:
+
+```bash
+pip install strands-agents[ollama]
+```
+
+Next, import and initialize the `OllamaModel` provider:
+
+```python
+from strands import Agent
+from strands.models.ollama import OllamaModel
+
+ollama_model = OllamaModel(
+    host="http://localhost:11434"  # Ollama server address
+    model_id="llama3",  # Specify which model to use
+    temperature=0.3,
+)
+
+agent = Agent(model=ollama_model)
 ```
 
 ### Custom Model Providers

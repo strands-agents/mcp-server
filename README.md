@@ -71,7 +71,7 @@ In `~/.cursor/mcp.json`:
 ## Server development
 
 ```bash
-git clone git@github.com:strands-agents/mcp-server.git
+git clone https://github.com/strands-agents/mcp-server.git
 cd mcp-server
 python3 -m venv venv
 source venv/bin/activate
