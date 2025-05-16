@@ -1,0 +1,106 @@
+[project]
+name = "strands-agents-mcp-server"
+version = "0.1.0"
+description = "A Model Context Protocol server that provides knowledge about building AI agents with Strands Agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "AWS", email = "opensource@amazon.com"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "mcp>=1.1.3",
+    "pydantic>=2.0.0",
+]
+
+[project.scripts]
+strands-agents-mcp-server = "strands_mcp_server.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project.urls]
+Homepage = "https://github.com/strands-agents/mcp-server"
+"Bug Tracker" = "https://github.com/strands-agents/mcp-server"
+Documentation = "https://www.strands-agents.com"
+
+[project.optional-dependencies]
+dev = [
+    "commitizen>=4.4.0",
+    "hatch>=1.0.0",
+    "pre-commit>=2.20.0",
+    "ruff>=0.4.4",
+]
+
+[tool.hatch.build]
+packages = ["src/strands_mcp_server"]
+
+[tool.hatch.envs.hatch-static-analysis]
+dependencies = [
+    "mcp>=1.1.3",
+    "pydantic>=2.0.0",
+    "ruff>=0.4.4",
+]
+
+[tool.hatch.envs.hatch-static-analysis.scripts]
+format-check = [
+    "ruff format --check"
+]
+format-fix = [
+    "ruff format"
+]
+lint-check = [
+    "ruff check"
+]
+lint-fix = [
+    "ruff check --fix"
+]
+
+[tool.hatch.envs.default.scripts]
+list = [
+    "echo 'Scripts commands available for default env:'; hatch env show --json | jq --raw-output '.default.scripts | keys[]'"
+]
+format = [
+  "hatch fmt --formatter",
+]
+lint = [
+    "hatch fmt --linter"
+]
+
+[tool.ruff]
+line-length = 120
+include = ["src/**/*.py"]
+
+[tool.ruff.lint]
+select = [
+  "E", # pycodestyle
+  "F", # pyflakes
+  "I", # isort
+  "B", # flake8-bugbear
+]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+bump_message = "chore(release): bump version $current_version -> $new_version"
+version_files = [
+    "pyproject.toml:version",
+]
+update_changelog_on_bump = true

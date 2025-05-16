@@ -1,0 +1,36 @@
+name: Lint
+
+on:
+  pull_request:  # Safer than pull_request_target for untrusted code
+    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review, review_requested, review_request_removed]
+  push:
+    branches: [ main ]  # Also run on direct pushes to main
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir hatch
+
+      - name: Run lint
+        id: lint
+        run: hatch run lint
+        continue-on-error: false
