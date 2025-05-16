@@ -39,7 +39,7 @@ allow-direct-references = true
 [project.urls]
 Homepage = "https://github.com/strands-agents/mcp-server"
 "Bug Tracker" = "https://github.com/strands-agents/mcp-server"
-Documentation = "https://www.strands-agents.com"
+Documentation = "https://strandsagents.com"
 
 [project.optional-dependencies]
 dev = [
