@@ -97,7 +97,7 @@ agent = Agent(model=litellm_model)
 
 Llama API is a Meta-hosted API service that helps you integrate Llama models into your applications quickly and efficiently.
 
-First install the `` python client:
+First install the `llamaapi` python client:
 ```bash
 pip install strands-agents[llamaapi]
 ```
