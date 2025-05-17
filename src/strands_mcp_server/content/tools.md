@@ -118,7 +118,7 @@ pip install strands-agents-tools
 
 - `image_reader`: Process and analyze images
 - `generate_image`: Create AI generated images with Amazon Bedrock
-- `nova_reels`: Create AI generated images with Nova Reels on Amazon Bedrock
+- `nova_reels`: Create AI generated videos with Nova Reels on Amazon Bedrock
 
 #### AWS Services
 
