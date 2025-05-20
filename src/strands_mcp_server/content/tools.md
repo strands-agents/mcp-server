@@ -26,7 +26,7 @@ agent("Show me the contents of a single file in this directory")
 
 Build your own Python tools using the Strands SDK's tool interfaces.
 
-Function decorated tools can be placed anywhere in your codebase and imported in to your agent's list of tools. Define any Python function as a tool by using the [`@tool`](../../../api-reference/tools.md#strands.tools.decorator.tool) decorator.
+Function decorated tools can be placed anywhere in your codebase and imported into your agent's list of tools. Define any Python function as a tool by using the [`@tool`](../../../api-reference/tools.md#strands.tools.decorator.tool) decorator.
 
 ```python
 from strands import Agent, tool
@@ -81,7 +81,7 @@ with stdio_mcp_client:
 
 ### 3. Example Built-in Tools
 
-Strands offers an optional example tools package `strands-agents-tools` which includes pre-built tools to get started quickly experimenting with agents and tools during development.
+Strands offers an optional example tools package `strands-agents-tools`, which includes pre-built tools to get started quickly experimenting with agents and tools during development.
 
 Install the `strands-agents-tools` package by running:
 
@@ -134,7 +134,7 @@ pip install strands-agents-tools
 
 - `agent_graph`: Create and manage graphs of agents
 - `journal`: Create structured tasks and logs for agents to manage and work from
-- `swarm`: Coordinate multiple AI agents in a swarm / network of agents
+- `swarm`: Coordinate multiple AI agents in a swarm/network of agents
 - `stop`: Force stop the agent event loop
 - `think`: Perform deep thinking by creating parallel branches of agentic reasoning
 - `use_llm`: Run a new AI event loop with custom prompts
