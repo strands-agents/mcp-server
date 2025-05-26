@@ -4,6 +4,10 @@ This MCP server provides documentation about Strands Agents,
 so you can use your favorite AI coding assistant to vibe-code AI agents
 with the Strands Agents SDK.
 
+## Prerequisites
+
+The usage methods below require [uv](https://github.com/astral-sh/uv) to be installed on your system. You can install it by following the [official installation instructions](https://github.com/astral-sh/uv#installation).
+
 ## Installation
 
 You can use the Strands Agents MCP server with
@@ -67,6 +71,18 @@ In `~/.cursor/mcp.json`:
   }
 }
 ```
+
+## Quick Testing
+
+You can quickly test the MCP server using the MCP Inspector:
+
+```bash
+npx @modelcontextprotocol/inspector uvx strands-agents-mcp-server
+```
+
+Note: This requires [npx](https://docs.npmjs.com/cli/v11/commands/npx) to be installed on your system. It comes bundled with [Node.js](https://nodejs.org/). 
+
+The Inspector is also useful for troubleshooting MCP server issues as it provides detailed connection and protocol information. For an in-depth guide, have a look at the [MCP Inspector documentation](https://modelcontextprotocol.io/docs/tools/inspector).
 
 ## Server development
 
