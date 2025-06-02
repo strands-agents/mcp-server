@@ -1,11 +1,11 @@
 name: Lint
 
 on:
-  pull_request:  # Safer than pull_request_target for untrusted code
-    branches: [ main ]
-    types: [opened, synchronize, reopened, ready_for_review, review_requested, review_request_removed]
-  push:
-    branches: [ main ]  # Also run on direct pushes to main
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
 
 jobs:
   lint:
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - name: Set up Python
