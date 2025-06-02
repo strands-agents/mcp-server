@@ -1,6 +1,6 @@
 [project]
 name = "strands-agents-mcp-server"
-version = "0.1.2"
+dynamic = ["version"]
 description = "A Model Context Protocol server that provides knowledge about building AI agents with Strands Agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,11 +30,15 @@ dependencies = [
 strands-agents-mcp-server = "strands_mcp_server.server:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.hatch.version]
+# Tells Hatch to use your version control system (git) to determine the version.
+source = "vcs"
 
 [project.urls]
 Homepage = "https://github.com/strands-agents/mcp-server"
