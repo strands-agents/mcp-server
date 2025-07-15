@@ -1,209 +1,284 @@
 # Hooks
 
-Hooks are a composable extensibility mechanism for extending agent functionality by subscribing to events throughout the agent lifecycle. The hook system enables both built-in components and user code to react to or modify agent behavior through strongly-typed event callbacks.
+Hooks provide a powerful, type-safe extensibility system that allows you to subscribe to events throughout the agent lifecycle. This composable mechanism enables both built-in components and custom code to monitor, modify, or extend agent behavior at key execution points.
 
-## Overview
+## Core Concepts
 
-The hooks system is an evolution of the callback_handler approach with a more composable, type-safe system that supports multiple subscribers per event type. 
+**Hook Event**: A specific moment in the agent lifecycle where callbacks can be triggered (e.g., before tool execution, after model response).
 
-A **Hook Event** is a specific event in the lifecycle that callbacks can be associated with. A **Hook Callback** is a callback function that is invoked when the hook event is emitted.
+**Hook Callback**: A function that executes when its associated hook event occurs, receiving strongly-typed event data.
 
-Hooks enable use cases such as:
+**Hook Provider**: A class that registers multiple callbacks across different events, enabling organized, reusable hook logic.
 
-- Monitoring agent execution and tool usage
-- Modifying tool execution behavior
-- Adding validation and error handling
+## Common Use Cases
 
-## Basic Usage
+- **Monitoring**: Track agent execution, tool usage, and performance metrics
+- **Modification**: Alter tool parameters, swap tools, or transform results
+- **Validation**: Add custom error handling and input validation
+- **Logging**: Capture detailed execution traces for debugging and auditing
+- **Security**: Implement access controls and sensitive data filtering
 
-Hook callbacks are registered against specific event types and receive strongly-typed event objects when those events occur during agent execution. Each event carries relevant data for that stage of the agent lifecycle - for example, `BeforeInvocationEvent` includes agent and request details, while `BeforeToolInvocationEvent` provides tool information and parameters.
+## Quick Start
 
-### Registering Individual Hook Callbacks
+### Simple Callback Registration
 
-You can register callbacks for specific events using `add_callback`:
+Register individual callbacks for specific events:
 
 ```python
+from strands_agents import Agent
+from strands_agents.hooks import BeforeInvocationEvent
+
+def log_agent_start(event: BeforeInvocationEvent) -> None:
+    print(f"Starting request for agent: {event.agent.name}")
+    print(f"User message: {event.request.messages[-1].content}")
+
 agent = Agent()
-
-# Register individual callbacks
-def my_callback(event: BeforeInvocationEvent) -> None:
-    print("Custom callback triggered")
-
-hooks.add_callback(BeforeInvocationEvent, my_callback)
+agent.hooks.add_callback(BeforeInvocationEvent, log_agent_start)
 ```
 
-### Creating a Hook Provider
+### Hook Provider Pattern
 
-The `HookProvider` protocol allows a single object to register callbacks for multiple events:
+Create reusable hook collections with the `HookProvider` protocol:
 
 ```python
-class LoggingHook(HookProvider):
+from strands_agents.hooks import HookProvider, HookRegistry
+
+class RequestMonitor(HookProvider):
+    def __init__(self):
+        self.request_count = 0
+        self.tool_usage = {}
+    
     def register_hooks(self, registry: HookRegistry) -> None:
-        registry.add_callback(BeforeInvocationEvent, self.log_start)
-        registry.add_callback(AfterInvocationEvent, self.log_end)
+        registry.add_callback(BeforeInvocationEvent, self.track_request)
+        registry.add_callback(BeforeToolInvocationEvent, self.track_tool_usage)
+        registry.add_callback(AfterInvocationEvent, self.log_summary)
+    
+    def track_request(self, event: BeforeInvocationEvent) -> None:
+        self.request_count += 1
+        print(f"Processing request #{self.request_count}")
+    
+    def track_tool_usage(self, event: BeforeToolInvocationEvent) -> None:
+        tool_name = event.tool_use.name
+        self.tool_usage[tool_name] = self.tool_usage.get(tool_name, 0) + 1
+    
+    def log_summary(self, event: AfterInvocationEvent) -> None:
+        print(f"Request completed. Total requests: {self.request_count}")
+        print(f"Tool usage: {self.tool_usage}")
 
-    def log_start(self, event: BeforeInvocationEvent) -> None:
-        print(f"Request started for agent: {event.agent.name}")
+# Use the hook provider
+monitor = RequestMonitor()
+agent = Agent(hooks=[monitor])
 
-    def log_end(self, event: AfterInvocationEvent) -> None:
-        print(f"Request completed for agent: {event.agent.name}")
-
-# Passed in via the hooks parameter
-agent = Agent(hooks=[LoggingHook()])
-
-# Or added after the fact
-agent.hooks.add_hook(LoggingHook())
+# Or add after agent creation
+agent.hooks.add_hook(monitor)
 ```
 
-## Hook Event Lifecycle
+## Event Lifecycle
 
-The following diagram shows when hook events are emitted during a typical agent invocation where tools are invoked:
+Understanding when events fire helps you choose the right hook points:
 
 ```mermaid
-flowchart LR
- subgraph Start["Request Start Events"]
-    direction TB
-        BeforeInvocationEvent["BeforeInvocationEvent"]
-        StartMessage["MessageAddedEvent"]
-        BeforeInvocationEvent --> StartMessage
-  end
- subgraph Model["Model Events"]
-    direction TB
-        AfterModelInvocationEvent["AfterModelInvocationEvent"]
-        BeforeModelInvocationEvent["BeforeModelInvocationEvent"]
-        ModelMessage["MessageAddedEvent"]
-        BeforeModelInvocationEvent --> AfterModelInvocationEvent
-        AfterModelInvocationEvent --> ModelMessage
-  end
-  subgraph Tool["Tool Events"]
-    direction TB
-        AfterToolInvocationEvent["AfterToolInvocationEvent"]
-        BeforeToolInvocationEvent["BeforeToolInvocationEvent"]
-        ToolMessage["MessageAddedEvent"]
-        BeforeToolInvocationEvent --> AfterToolInvocationEvent
-        AfterToolInvocationEvent --> ToolMessage
-  end
-  subgraph End["Request End Events"]
-    direction TB
-        AfterInvocationEvent["AfterInvocationEvent"]
-  end
-Start --> Model
-Model <--> Tool
-Tool --> End
+flowchart TD
+    A[Agent Request Starts] --> B[BeforeInvocationEvent]
+    B --> C[User MessageAddedEvent]
+    C --> D[BeforeModelInvocationEvent]
+    D --> E[AfterModelInvocationEvent]
+    E --> F[Model MessageAddedEvent]
+    F --> G{Tools Needed?}
+    G -->|Yes| H[BeforeToolInvocationEvent]
+    H --> I[AfterToolInvocationEvent]
+    I --> J[Tool MessageAddedEvent]
+    J --> K{More Tools?}
+    K -->|Yes| H
+    K -->|No| L[AfterInvocationEvent]
+    G -->|No| L
+    L --> M[Request Complete]
 ```
 
+## Available Events
 
-### Available Events
+### Core Events
+These events are stable and recommended for production use:
 
-The hooks system provides events for different stages of agent execution:
+| Event | Timing | Use Cases |
+|-------|--------|-----------|
+| `AgentInitializedEvent` | After agent construction | Setup, configuration validation |
+| `BeforeInvocationEvent` | Start of each request | Request logging, preprocessing |
+| `AfterInvocationEvent` | End of each request | Cleanup, metrics, response processing |
+| `MessageAddedEvent` | When messages are added | Conversation tracking, content filtering |
 
-| Event                  | Description                                                                                                  |
-|------------------------|--------------------------------------------------------------------------------------------------------------|
-| `AgentInitializedEvent` | Triggered when an agent has been constructed and finished initialization at the end of `Agent.__init__`. |
-| `BeforeInvocationEvent` | Triggered at the beginning of a new agent request (`__call__`, `stream_async`, or `structured_output`) |
-| `AfterInvocationEvent` | Triggered at the end of an agent request, regardless of success or failure. Uses reverse callback ordering   |
-| `MessageAddedEvent`    | Triggered when a message is added to the agent's conversation history                                        |
+### Experimental Events
+These events provide fine-grained control but may change in future releases:
 
-Additional *experimental events* are also available:
+| Event | Timing | Use Cases |
+|-------|--------|-----------|
+| `BeforeModelInvocationEvent` | Before LLM calls | Prompt modification, caching |
+| `AfterModelInvocationEvent` | After LLM responses | Response filtering, cost tracking |
+| `BeforeToolInvocationEvent` | Before tool execution | Tool swapping, parameter validation |
+| `AfterToolInvocationEvent` | After tool execution | Result transformation, error handling |
 
-!!! note "Experimental events are subject to change"
+## Advanced Patterns
 
-    These events are exposed experimentally in order to gather feedback and refine the public contract. Because they are experimental, they are subject to change between releases. 
+### Tool Interception and Replacement
 
-| Experimental Event           | Description |
-|------------------------------|-------------|
-| `BeforeModelInvocationEvent` | Triggered before the model is invoked for inference |
-| `AfterModelInvocationEvent`  | Triggered after model invocation completes. Uses reverse callback ordering |
-| `BeforeToolInvocationEvent`  | Triggered before a tool is invoked. |
-| `AfterToolInvocationEvent`   | Triggered after tool invocation completes. Uses reverse callback ordering |
-
-## Hook Behaviors
-
-### Event Properties
-
-Most event properties are read-only to prevent unintended modifications. However, certain properties can be modified to influence agent behavior. For example, `BeforeToolInvocationEvent.selected_tool` allows you to change which tool gets executed, while `AfterToolInvocationEvent.result` enables modification of tool results.
-
-### Callback Ordering
-
-Some events come in pairs, such as Before/After events. The After event callbacks are always called in reverse order from the Before event callbacks to ensure proper cleanup semantics.
-
-
-## Advanced Usage
-
-### Tool Interception
-
-Modify or replace tools before execution:
+Replace or modify tools before execution:
 
 ```python
-class ToolInterceptor(HookProvider):
+class SecurityHook(HookProvider):
+    def __init__(self, allowed_tools: set[str]):
+        self.allowed_tools = allowed_tools
+        self.blocked_count = 0
+    
     def register_hooks(self, registry: HookRegistry) -> None:
-        registry.add_callback(BeforeToolInvocationEvent, self.intercept_tool)
+        registry.add_callback(BeforeToolInvocationEvent, self.validate_tool)
+    
+    def validate_tool(self, event: BeforeToolInvocationEvent) -> None:
+        tool_name = event.tool_use.name
+        
+        if tool_name not in self.allowed_tools:
+            # Replace with safe alternative
+            event.selected_tool = self.get_safe_alternative()
+            event.tool_use["name"] = "safe_info_tool"
+            self.blocked_count += 1
+            print(f"Blocked unauthorized tool: {tool_name}")
+    
+    def get_safe_alternative(self):
+        # Return a safe tool that provides helpful error messages
+        return SafeInfoTool()
 
-    def intercept_tool(self, event: BeforeToolInvocationEvent) -> None:
-        if event.tool_use.name == "sensitive_tool":
-            # Replace with a safer alternative
-            event.selected_tool = self.safe_alternative_tool
-            event.tool_use["name"] = "safe_tool"
+# Usage
+security = SecurityHook(allowed_tools={"calculator", "weather", "search"})
+agent = Agent(hooks=[security])
 ```
 
-### Result Modification
+### Result Transformation
 
 Modify tool results after execution:
 
 ```python
-class ResultProcessor(HookProvider):
+class ResultEnhancer(HookProvider):
     def register_hooks(self, registry: HookRegistry) -> None:
-        registry.add_callback(AfterToolInvocationEvent, self.process_result)
-
-    def process_result(self, event: AfterToolInvocationEvent) -> None:
-        if event.tool_use.name == "calculator":
-            # Add formatting to calculator results
-            original_content = event.result["content"][0]["text"]
-            event.result["content"][0]["text"] = f"Result: {original_content}"
+        registry.add_callback(AfterToolInvocationEvent, self.enhance_results)
+    
+    def enhance_results(self, event: AfterToolInvocationEvent) -> None:
+        tool_name = event.tool_use.name
+        
+        if tool_name == "calculator":
+            self._format_calculation(event)
+        elif tool_name == "weather":
+            self._add_weather_context(event)
+    
+    def _format_calculation(self, event: AfterToolInvocationEvent) -> None:
+        original = event.result["content"][0]["text"]
+        # Add formatting and explanation
+        event.result["content"][0]["text"] = f"🧮 Calculation Result: {original}"
+    
+    def _add_weather_context(self, event: AfterToolInvocationEvent) -> None:
+        original = event.result["content"][0]["text"]
+        # Add helpful context
+        event.result["content"][0]["text"] = f"{original}\n\n💡 Tip: Weather can change quickly. Check again for the most current conditions."
 ```
+
+## Callback Ordering
+
+Understanding callback execution order is crucial for complex hook interactions:
+
+- **Before events**: Execute in registration order
+- **After events**: Execute in reverse registration order (LIFO)
+- This ensures proper setup/teardown semantics
+
+```python
+class FirstHook(HookProvider):
+    def register_hooks(self, registry: HookRegistry) -> None:
+        registry.add_callback(BeforeInvocationEvent, lambda e: print("First: Before"))
+        registry.add_callback(AfterInvocationEvent, lambda e: print("First: After"))
+
+class SecondHook(HookProvider):
+    def register_hooks(self, registry: HookRegistry) -> None:
+        registry.add_callback(BeforeInvocationEvent, lambda e: print("Second: Before"))
+        registry.add_callback(AfterInvocationEvent, lambda e: print("Second: After"))
+
+agent = Agent(hooks=[FirstHook(), SecondHook()])
+
+# Output will be:
+# First: Before
+# Second: Before
+# ... (agent execution) ...
+# Second: After  # Reverse order for cleanup
+# First: After
+```
+
+This ordering ensures that the last hook to set up is the first to clean up, maintaining proper resource management and state consistency.
 
 ## Best Practices
 
-### Performance Considerations
+### Performance Guidelines
 
-Keep hook callbacks lightweight since they execute synchronously:
+Keep hook callbacks lightweight and fast:
 
 ```python
-class AsyncProcessor(HookProvider):
-    def register_hooks(self, registry: HookRegistry) -> None:
-        registry.add_callback(AfterInvocationEvent, self.queue_processing)
+# ✅ Good: Quick operations
+def log_tool_use(event: BeforeToolInvocationEvent) -> None:
+    logger.info(f"Tool used: {event.tool_use.name}")
 
-    def queue_processing(self, event: AfterInvocationEvent) -> None:
-        # Queue heavy processing for background execution
-        self.background_queue.put(event.agent.messages[-1])
+# ❌ Avoid: Heavy operations that block execution
+def slow_callback(event: BeforeToolInvocationEvent) -> None:
+    # Don't do expensive operations like API calls
+    response = requests.get("https://slow-api.com/log")  # Blocks agent execution
+    
+# ✅ Better: Queue heavy work for background processing
+def queue_heavy_work(event: BeforeToolInvocationEvent) -> None:
+    background_queue.put({
+        'event_type': 'tool_use',
+        'tool_name': event.tool_use.name,
+        'timestamp': time.time()
+    })
 ```
 
-### Composability
+### Composable Design
 
-Design hooks to be composable and reusable:
+Design hooks to work well together:
 
 ```python
-class RequestLoggingHook(HookProvider):
-    def register_hooks(self, registry: HookRegistry) -> None:
-        registry.add_callback(BeforeInvocationEvent, self.log_request)
-        registry.add_callback(AfterInvocationEvent, self.log_response)
-        registry.add_callback(BeforeToolInvocationEvent, self.log_tool_use)
+# Each hook has a single responsibility
+class RequestLogger(HookProvider):
+    """Logs request start/end times"""
+    pass
 
-    ...
+class ToolValidator(HookProvider):
+    """Validates tool usage against policies"""
+    pass
+
+class ResultFormatter(HookProvider):
+    """Formats tool results for better presentation"""
+    pass
+
+# Combine multiple hooks
+agent = Agent(hooks=[
+    RequestLogger(),
+    ToolValidator(allowed_tools=["calculator", "search"]),
+    ResultFormatter()
+])
 ```
 
-### Event Property Modifications
+### Debugging Hook Behavior
 
-When modifying event properties, log the changes for debugging and audit purposes:
+Add debugging capabilities to your hooks:
 
 ```python
-class ResultProcessor(HookProvider):
+class DebuggableHook(HookProvider):
+    def __init__(self, debug: bool = False):
+        self.debug = debug
+    
     def register_hooks(self, registry: HookRegistry) -> None:
-        registry.add_callback(AfterToolInvocationEvent, self.process_result)
+        registry.add_callback(BeforeToolInvocationEvent, self.debug_tool_call)
+    
+    def debug_tool_call(self, event: BeforeToolInvocationEvent) -> None:
+        if self.debug:
+            print(f"🐛 Debug - Tool: {event.tool_use.name}")
+            print(f"🐛 Debug - Parameters: {event.tool_use.input}")
+            print(f"🐛 Debug - Selected tool type: {type(event.selected_tool)}")
 
-    def process_result(self, event: AfterToolInvocationEvent) -> None:
-        if event.tool_use.name == "calculator":
-            original_content = event.result["content"][0]["text"]
-            logger.info(f"Modifying calculator result: {original_content}")
-            event.result["content"][0]["text"] = f"Result: {original_content}"
+# Enable debugging when needed
+agent = Agent(hooks=[DebuggableHook(debug=True)])
 ```

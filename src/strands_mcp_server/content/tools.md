@@ -124,24 +124,9 @@ Tools can return responses using the `ToolResult` structure:
 }
 ```
 
-## Async Tools
+## Built-in Community Example Tools
 
-Both decorator-based and module-based tools can be implemented as async functions:
-
-```python
-@tool
-async def call_api() -> str:
-    """Call API asynchronously."""
-    await asyncio.sleep(1)  # Simulated API call
-    return "API result"
-
-# Invoke async tools with agent.invoke_async()
-await agent.invoke_async("Call my API")
-```
-
-## Built-in Example Tools
-
-Strands offers an optional package `strands-agents-tools` with pre-built tools for:
+Strands offers a community package `strands-agents-tools` with pre-built tools for:
 - 
 - RAG & Memory: `retrieve`, `memory`, `mem0_memory`
 - File Operations: `editor`, `file_read`, `file_write`

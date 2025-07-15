@@ -200,40 +200,6 @@ At completion:
 - Conversation state is updated
 - Final response is returned to the caller
 
-## Control Flow and Safety
-
-The agent loop includes several mechanisms for control and safety:
-
-### Iteration Limits
-
-To prevent infinite loops, the event loop has configurable limits:
-
-```python
-agent = Agent(
-    max_iterations=5,  # Maximum iterations per user request
-)
-```
-
-### Error Handling
-
-The event loop implements error handling with exponential backoff for recoverable errors:
-
-1. If a tool execution fails, it's retried with increasing delays
-2. If model inference fails, it's retried with different parameters
-3. Unrecoverable errors are propagated to the caller
-
-### State Management
-
-The agent maintains state throughout the loop:
-
-1. **Conversation History**: Messages exchanged between user and agent
-2. **Tool Context**: Previous tool calls and their results
-3. **Request State**: State specific to the current request
-
-## Use Cases for Agent Loop
-
-The recursive agent loop enables various complex interactions:
-
 ### Research and Analysis
 
 ```python

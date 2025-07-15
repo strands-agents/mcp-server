@@ -233,31 +233,3 @@ async def main():
 
 asyncio.run(main())
 ```
-
-## Async Web Application Integration
-
-Asynchronous agents integrate well with async web frameworks:
-
-### FastAPI Example
-
-```python
-import asyncio
-from fastapi import FastAPI, WebSocket
-from strands import Agent
-
-app = FastAPI()
-agent = Agent()
-
-@app.websocket("/agent")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    
-    # Receive user message
-    user_message = await websocket.receive_text()
-    
-    # Stream agent response
-    async for chunk in agent.stream_async(user_message):
-        if "contentBlockDelta" in chunk and "text" in chunk["contentBlockDelta"]["delta"]:
-            text = chunk["contentBlockDelta"]["delta"]["text"]
-            await websocket.send_text(text)
-```
