@@ -18,26 +18,30 @@ mcp = FastMCP(
 )
 
 
-@mcp.tool()
-async def quickstart() -> str:
-    """Quickstart documentation for Strands Agents SDK."""
-    return pkg_resources.joinpath("content", "quickstart.md").read_text(
-        encoding="utf-8"
-    )
+def create_documentation_tool(filename: str):
+    """Create a documentation tool for a given markdown file."""
+    # Remove .md extension to get the tool name
+    tool_name = filename.replace('.md', '')
+    
+    # Generate description from filename by converting underscores to spaces and capitalizing
+    topic = tool_name.replace('_', ' ').title()
+    description = f'Documentation on {topic} in Strands Agents.'
+
+    async def tool_function() -> str:
+        return pkg_resources.joinpath("content", filename).read_text(encoding="utf-8")
+
+    mcp.add_tool(tool_function, name=tool_name, description=description)
 
 
-@mcp.tool()
-async def model_providers() -> str:
-    """Documentation on using different model providers in Strands Agents."""
-    return pkg_resources.joinpath("content", "model_providers.md").read_text(
-        encoding="utf-8"
-    )
+def initialize_tools():
+    """Initialize all documentation tools by scanning the content directory."""
+    content_dir = pkg_resources.joinpath("content")
+    if content_dir.is_dir():
+        for item in content_dir.iterdir():
+            if item.is_file() and item.name.endswith('.md'):
+                create_documentation_tool(item.name)
 
-
-@mcp.tool()
-async def agent_tools() -> str:
-    """Documentation on adding tools to agents using Strands Agents."""
-    return pkg_resources.joinpath("content", "tools.md").read_text(encoding="utf-8")
+initialize_tools()
 
 
 def main():
