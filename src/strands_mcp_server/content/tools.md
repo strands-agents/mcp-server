@@ -1,141 +1,147 @@
-Tools are the primary mechanism for extending agent capabilities, enabling them to perform actions beyond simple text generation. Tools allow agents to interact with external systems, access data, and manipulate their environment.
+# Strands Agent Tools
 
-## Adding Tools to Agents
+Tools are the primary mechanism for extending agent capabilities in the Strands Agents SDK, enabling them to perform actions beyond simple text generation. They allow agents to interact with external systems, access data, and manipulate their environment.
 
-Tools are passed to agents during initialization or at runtime, making them available for use throughout the agent's lifecycle. Once loaded, the agent can use these tools in response to user requests:
+## Tool Implementation Approaches
 
-```python
-from strands import Agent
-from strands_tools import calculator, file_read, shell
+### 1. Python Function Decorator Approach
 
-# Add tools to our agent
-agent = Agent(
-    tools=[calculator, file_read, shell]
-)
-
-# Agent will automatically determine when to use the calculator tool
-agent("What is 42 ^ 9")
-
-# Agent will use the shell and file reader tool when appropriate
-agent("Show me the contents of a single file in this directory")
-```
-
-## Building & Loading Tools
-
-### 1. Python Tools
-
-Build your own Python tools using the Strands SDK's tool interfaces.
-
-Function decorated tools can be placed anywhere in your codebase and imported in to your agent's list of tools. Define any Python function as a tool by using the [`@tool`](../../../api-reference/tools.md#strands.tools.decorator.tool) decorator.
+The simplest way to create a tool is using the `@tool` decorator on Python functions:
 
 ```python
 from strands import Agent, tool
 
 @tool
-def get_user_location() -> str:
-    """Get the user's location
-    """
-
-    # Implement user location lookup logic here
-    return "Seattle, USA"
-
-@tool
 def weather(location: str) -> str:
-    """Get weather information for a location
+    """Get weather information for a location.
 
     Args:
         location: City or location name
     """
-
-    # Implement weather lookup logic here
+    # Implement weather lookup logic
     return f"Weather for {location}: Sunny, 72°F"
 
-agent = Agent(tools=[get_user_location, weather])
-
-# Use the agent with the custom tools
-agent("What is the weather like in my location?")
+agent = Agent(tools=[weather])
 ```
 
-### 2. Model Context Protocol (MCP) Tools
+The decorator extracts information from your function's docstring for the tool description and parameters, combined with type hints to create a complete specification.
 
-The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) provides a standardized way to expose and consume tools across different systems. This approach is ideal for creating reusable tool collections that can be shared across multiple agents or applications.
+### 2. Python Modules as Tools
+
+You can create a tool as a Python module with two key components:
+- A `TOOL_SPEC` variable defining name, description, and input schema
+- A function with the same name implementing the tool's functionality
 
 ```python
-from mcp import stdio_client, StdioServerParameters
+# weather.py
+TOOL_SPEC = {
+    "name": "weather",
+    "description": "Get weather information for a location",
+    "inputSchema": {
+        "json": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "City or location name"
+                }
+            },
+            "required": ["location"]
+        }
+    }
+}
+
+def weather(tool, **kwargs):
+    location = tool["input"]["location"]
+    return {
+        "toolUseId": tool["toolUseId"],
+        "status": "success",
+        "content": [{"text": f"Weather for {location}: Sunny, 72°F"}]
+    }
+```
+
+### 3. Model Context Protocol (MCP) Tools
+
+The Model Context Protocol (MCP) provides a standardized way to expose and consume tools across different systems:
+
+```python
+from mcp.client.sse import sse_client
 from strands import Agent
 from strands.tools.mcp import MCPClient
 
-# Connect to an MCP server using stdio transport
-stdio_mcp_client = MCPClient(lambda: stdio_client(
-    StdioServerParameters(command="uvx", args=["awslabs.aws-documentation-mcp-server@latest"])
-))
+# Connect to an MCP server using SSE transport
+mcp_client = MCPClient(lambda: sse_client("http://localhost:8000/sse"))
 
-# Create an agent with MCP tools
-with stdio_mcp_client:
-    # Get the tools from the MCP server
-    tools = stdio_mcp_client.list_tools_sync()
-
-    # Create an agent with these tools
+with mcp_client:
+    tools = mcp_client.list_tools_sync()
     agent = Agent(tools=tools)
+    agent("Calculate the square root of 144")
 ```
 
-### 3. Example Built-in Tools
+## Adding Tools to Agents
 
-Strands offers an optional example tools package `strands-agents-tools` which includes pre-built tools to get started quickly experimenting with agents and tools during development.
+Tools can be added to agents in several ways:
 
-Install the `strands-agents-tools` package by running:
+```python
+# As imported functions or modules
+agent = Agent(tools=[calculator, file_read, weather_module])
 
-```bash
-pip install strands-agents-tools
+# As file paths
+agent = Agent(tools=["/path/to/my_tool.py"])
+
+# Auto-loading from directory
+agent = Agent(load_tools_from_directory=True)  # Loads from ./tools/
 ```
 
-## Available Built-In Strands Tools
+## Invoking Tools
 
-#### RAG & Memory
+Tools can be invoked in two ways:
 
-- `retrieve`: Semantically retrieve data from Amazon Bedrock Knowledge Bases for RAG, memory, and other purposes
+1. **Natural Language Invocation**: The agent determines when to use tools based on the request.
+   ```python
+   agent("Please read the file at /path/to/file.txt")
+   ```
 
-#### File Operations
+2. **Direct Method Calls**: Every tool is accessible as a method on the agent object.
+   ```python
+   result = agent.tool.file_read(path="/path/to/file.txt", mode="view")
+   ```
 
-- `editor`: Advanced file editing operations
-- `file_read`: Read and parse files
-- `file_write`: Create and modify files
+## Tool Response Format
 
-#### Shell & System
+Tools can return responses using the `ToolResult` structure:
 
-- `environment`: Manage environment variables
-- `shell`: Execute shell commands
+```python
+{
+    "toolUseId": str,     # The ID of the tool use request (optional)
+    "status": str,        # Either "success" or "error"
+    "content": [          # List of content items with different formats
+        {"text": "Operation completed successfully"},
+        {"json": {"results": [1, 2, 3]}},
+        {"image": {"format": "png", "source": {"bytes": binary_data}}},
+        {"document": {"format": "pdf", "name": "report.pdf", "source": {...}}}
+    ]
+}
+```
 
-#### Code Interpretation
+## Built-in Community Example Tools
 
-- `python_repl`: Run Python code
+Strands offers a community package `strands-agents-tools` with pre-built tools for:
+- 
+- RAG & Memory: `retrieve`, `memory`, `mem0_memory`
+- File Operations: `editor`, `file_read`, `file_write`
+- Shell & System: `environment`, `shell`, `cron`
+- Code Interpretation: `python_repl`
+- Web & Network: `http_request`, `slack`
+- Multi-modal: `generate_image`, `image_reader`, `speak`
+- AWS Services: `use_aws`
+- Utilities: `calculator`, `current_time`, `load_tool`
+- Agents & Workflows: `agent_graph`, `journal`, `swarm`, `handoff_to_user`
 
-#### Web & Network
+## Tool Design Best Practices
 
-- `http_request`: Make API calls, fetch web data, and call local HTTP servers
-
-#### Multi-modal
-
-- `image_reader`: Process and analyze images
-- `generate_image`: Create AI generated images with Amazon Bedrock
-- `nova_reels`: Create AI generated videos with Nova Reels on Amazon Bedrock
-
-#### AWS Services
-
-- `use_aws`: Interact with AWS services
-
-#### Utilities
-
-- `calculator`: Perform mathematical operations
-- `current_time`: Get the current date and time
-- `load_tool`: Dynamically load more tools at runtime
-
-#### Agents & Workflows
-
-- `agent_graph`: Create and manage graphs of agents
-- `journal`: Create structured tasks and logs for agents to manage and work from
-- `swarm`: Coordinate multiple AI agents in a swarm / network of agents
-- `stop`: Force stop the agent event loop
-- `think`: Perform deep thinking by creating parallel branches of agentic reasoning
-- `use_llm`: Run a new AI event loop with custom prompts
-- `workflow`: Orchestrate sequenced workflows
+1. **Clear Descriptions**: Explain purpose, usage scenarios, and limitations
+2. **Detailed Parameter Documentation**: Specify types, formats, and examples
+3. **Appropriate Error Handling**: Return informative error responses
+4. **Security Considerations**: Validate inputs and handle sensitive operations safely
+5. **Performance Optimization**: Minimize latency for frequently used tools
