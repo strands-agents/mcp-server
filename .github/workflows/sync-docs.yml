@@ -1,0 +1,126 @@
+name: Sync Documentation
+
+# This workflow synchronizes documentation from the Strands Agents docs repository
+# to the MCP server content folder. It ensures that the MCP server always has
+# the most up-to-date documentation available for users.
+
+on:
+  # Run on push to main branch - ensures documentation is updated when code changes
+  push:
+    branches:
+      - main
+  # Run on schedule (daily at midnight UTC) - keeps documentation current even without code changes
+  schedule:
+    - cron: '0 0 * * *'
+  # Allow manual triggering - enables on-demand updates when needed
+  workflow_dispatch:
+    # No inputs required, but this enables the "Run workflow" button in the GitHub UI
+
+permissions:
+  contents: write  # Needed to push changes back to the repository
+
+jobs:
+  sync-docs:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the MCP server repository
+      - name: Checkout MCP Server Repository
+        uses: actions/checkout@v3
+        with:
+          path: mcp-server
+          fetch-depth: 0
+
+      # Checkout the Strands Agents docs repository
+      - name: Checkout Docs Repository
+        uses: actions/checkout@v3
+        with:
+          repository: strands-agents/docs
+          path: docs-repo
+          fetch-depth: 1
+
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip3 install --upgrade pip3
+          pip3 install -e ".[dev]"
+
+      # Run the sync script
+      # This step executes the Python script that performs the actual synchronization
+      # It compares files between repositories, copies new/modified files, and deletes removed files
+      # The --validate flag ensures markdown files are properly formatted before syncing
+      - name: Sync documentation
+        id: sync
+        run: |
+          python mcp-server/scripts/sync_docs.py --source ./docs-repo/docs --target ./mcp-server/src/strands_mcp_server/content --validate
+        env:
+          LOG_LEVEL: INFO
+
+      # Build document index
+      # This step runs after sync to create a comprehensive index of all documents
+      # The index includes relationships, cross-references, categories, and metadata
+      # This helps the MCP server provide better document discovery and navigation
+      - name: Build document index
+        id: index
+        run: |
+          python mcp-server/scripts/indexer.py --content-dir ./mcp-server/src/strands_mcp_server/content --output ./mcp-server/src/strands_mcp_server/content/document_index.json --log-level INFO
+        env:
+          LOG_LEVEL: INFO
+
+      # Commit and push changes if any
+      # This step commits any changes made by the sync script and indexer back to the repository
+      # It only creates a commit if there are actual changes to commit
+      # The commit includes the content files, document index, and any validation/error reports
+      - name: Commit and push changes
+        run: |
+          cd mcp-server
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add src/strands_mcp_server/content/
+          # Also add any validation or error reports
+          if [ -d "src/strands_mcp_server/content/validation_reports" ]; then
+            git add src/strands_mcp_server/content/validation_reports/
+          fi
+          if [ -d "src/strands_mcp_server/content/error_reports" ]; then
+            git add src/strands_mcp_server/content/error_reports/
+          fi
+          # Add the document index file
+          if [ -f "src/strands_mcp_server/content/document_index.json" ]; then
+            git add src/strands_mcp_server/content/document_index.json
+          fi
+          # Only commit if there are changes (git diff --staged --quiet exits with 1 if there are changes)
+          git diff --staged --quiet || git commit -m "Update documentation and document index from strands-agents/docs"
+          git push
+        
+      # Report statistics
+      - name: Report statistics
+        run: |
+          echo "=== Sync Statistics ==="
+          echo "Added files: ${{ steps.sync.outputs.added }}"
+          echo "Updated files: ${{ steps.sync.outputs.updated }}"
+          echo "Deleted files: ${{ steps.sync.outputs.deleted }}"
+          echo "Unchanged files: ${{ steps.sync.outputs.unchanged }}"
+          echo "Skipped files: ${{ steps.sync.outputs.skipped }}"
+          echo "Validation failures: ${{ steps.sync.outputs.validation_failures }}"
+          echo "Errors: ${{ steps.sync.outputs.errors }}"
+          echo "Total files: ${{ steps.sync.outputs.total_files }}"
+          echo "Total changes: ${{ steps.sync.outputs.total_changes }}"
+          echo "Success rate: ${{ steps.sync.outputs.success_rate }}"
+          echo ""
+          echo "=== Index Statistics ==="
+          if [ -f "mcp-server/src/strands_mcp_server/content/document_index.json" ]; then
+            python -c "import json; f=open('mcp-server/src/strands_mcp_server/content/document_index.json','r'); index=json.load(f); f.close(); metadata=index.get('metadata',{}); print(f'Documents indexed: {metadata.get(\"total_documents\", 0)}'); print(f'Categories found: {len(index.get(\"categories\", {}))}'); print(f'Concepts extracted: {len(index.get(\"concepts\", {}))}'); print(f'Tags identified: {len(index.get(\"tags\", {}))}'); print(f'Index version: {metadata.get(\"version\", \"unknown\")}'); print(f'Last updated: {metadata.get(\"last_updated\", \"unknown\")}')"
+          else
+            echo "Document index file not found"
+          fi
+          
+      # Create job summary with markdown
+      - name: Create job summary
+        run: |
+          echo "${{ steps.sync.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
