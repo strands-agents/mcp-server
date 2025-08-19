@@ -91,10 +91,6 @@ def fetch_doc(uri: str) -> Dict[str, Any]:
         "content": page.content,
     }
 
-
-# ---- Entry ------------------------------------------------------------------
-
-
 def main() -> None:
     """Main entry point for the MCP server.
 
