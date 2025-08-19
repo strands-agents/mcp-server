@@ -34,6 +34,15 @@
 
 This MCP server provides documentation about Strands Agents to your GenAI tools, so you can use your favorite AI coding assistant to vibe-code Strands Agents.
 
+## Features
+
+- **Documentation Access**: Provides Strands Agents documentation to AI coding assistants via MCP
+- **Intelligent Search**: Fuzzy search and smart search capabilities for finding relevant documentation
+- **Concept Exploration**: Browse documentation by categories and concepts
+- **Learning Paths**: Get suggested learning paths for specific topics
+- **Related Documents**: Find documents related to what you're currently reading
+- **Automatic Updates**: Documentation is automatically synced from the main Strands Agents docs repository
+
 ## Prerequisites
 
 The usage methods below require [uv](https://github.com/astral-sh/uv) to be installed on your system. You can install it by following the [official installation instructions](https://github.com/astral-sh/uv#installation).
@@ -54,9 +63,24 @@ In `~/.aws/amazonq/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "strands": {
+    "strands-agents": {
       "command": "uvx",
-      "args": ["strands-agents-mcp-server"]
+      "args": ["strands-agents-mcp-server"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "INFO"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "get_document",
+        "fuzzy_search_documents",
+        "smart_search",
+        "find_related_documents",
+        "browse_by_category",
+        "explore_concepts",
+        "get_document_overview",
+        "get_learning_path",
+        "get_document_overview"
+      ]
     }
   }
 }
@@ -94,9 +118,24 @@ In `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "strands": {
+    "strands-agents": {
       "command": "uvx",
-      "args": ["strands-agents-mcp-server"]
+      "args": ["strands-agents-mcp-server"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "INFO"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "get_document",
+        "fuzzy_search_documents",
+        "smart_search",
+        "find_related_documents",
+        "browse_by_category",
+        "explore_concepts",
+        "get_document_overview",
+        "get_learning_path",
+        "get_document_overview"
+      ]
     }
   }
 }
@@ -114,16 +153,90 @@ Note: This requires [npx](https://docs.npmjs.com/cli/v11/commands/npx) to be ins
 
 The Inspector is also useful for troubleshooting MCP server issues as it provides detailed connection and protocol information. For an in-depth guide, have a look at the [MCP Inspector documentation](https://modelcontextprotocol.io/docs/tools/inspector).
 
-## Server development
+## Getting Started
+
+1. **Install prerequisites**:
+   - Install [uv](https://github.com/astral-sh/uv) following the [official installation instructions](https://github.com/astral-sh/uv#installation)
+   - Make sure you have [Node.js](https://nodejs.org/) installed for npx commands
+
+2. **Configure your MCP client**:
+   - Choose your preferred MCP client from the installation examples above
+   - Add the Strands Agents MCP server configuration to your client
+
+3. **Test the connection**:
+   ```bash
+   npx @modelcontextprotocol/inspector uvx strands-agents-mcp-server
+   ```
+
+4. **Start using Strands Agents documentation** with your AI coding assistant!
+
+## Server Development
 
 ```bash
 git clone https://github.com/strands-agents/mcp-server.git
 cd mcp-server
 python3 -m venv venv
 source venv/bin/activate
-pip3 install -e .
+pip3 install -e ".[dev]"
 
 npx @modelcontextprotocol/inspector python -m strands_mcp_server
+```
+
+## Documentation Scripts
+
+The `scripts` folder contains important utilities for managing documentation:
+
+### Indexer (scripts/indexer.py)
+
+The document indexer builds relationships and cross-references between markdown files:
+
+```bash
+python scripts/indexer.py --content-dir ./src/strands_mcp_server/content --output ./src/strands_mcp_server/content/document_index.json
+```
+
+Features:
+- Extracts document metadata, headers, and links
+- Builds relationships between related documents
+- Identifies key concepts and categories
+- Creates a comprehensive search index
+
+### Documentation Sync (scripts/sync_docs.py)
+
+Synchronizes documentation from the Strands Agents docs repository to the MCP server content folder:
+
+```bash
+python scripts/sync_docs.py --source ../docs --target ./src/strands_mcp_server/content --validate
+```
+
+Features:
+- Copies new and modified files from source to target
+- Validates markdown files for proper formatting
+- Builds the document index after syncing
+- Generates statistics about the sync operation
+
+For more details, see [sync-docs-action.md](docs/sync-docs-action.md).
+
+## Troubleshooting
+
+### Common Issues
+
+- **MCP Server Not Found**: Ensure the `strands-agents-mcp-server` package is installed and accessible in your PATH
+- **Connection Errors**: Check that your MCP client is properly configured with the correct command and arguments
+- **Permission Issues**: Make sure your MCP client has the necessary permissions to execute the server
+- **Documentation Not Found**: The server might not have access to the documentation files; try reinstalling the package
+
+### Debugging
+
+To enable debug logging:
+
+```bash
+FASTMCP_LOG_LEVEL=DEBUG uvx strands-agents-mcp-server
+```
+
+You can also use the MCP Inspector for detailed connection diagnostics:
+
+```bash
+npx @modelcontextprotocol/inspector --debug uvx strands-agents-mcp-server
 ```
 
 ## Contributing ❤️

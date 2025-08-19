@@ -1,44 +1,106 @@
-from importlib import resources
+from typing import Any, Dict, List
 
 from mcp.server.fastmcp import FastMCP
 
-pkg_resources = resources.files("strands_mcp_server")
+from .utils import cache, text_processor
 
-mcp = FastMCP(
-    "strands-agents-mcp-server",
-    instructions="""
-    # Strands Agents MCP Server
-
-    This server provides tools to access Strands Agents documentation.
-    Strands Agents is a Python SDK for building AI agents.
-    It may also be referred to as simply 'Strands'.
-
-    The full documentation can be found at https://strandsagents.com.
-""",
-)
+# Application configuration
+APP_NAME = "strands_mcp_server"
+mcp = FastMCP(APP_NAME)
 
 
 @mcp.tool()
-async def quickstart() -> str:
-    """Quickstart documentation for Strands Agents SDK."""
-    return pkg_resources.joinpath("content", "quickstart.md").read_text(
-        encoding="utf-8"
-    )
+def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
+    """Search curated documentation and return ranked results with snippets.
+    
+    Args:
+        query: Search query string
+        k: Maximum number of results to return (default: 5)
+        
+    Returns:
+        List of dictionaries containing:
+        - url: Document URL
+        - title: Display title
+        - score: Relevance score (0-1, higher is better)
+        - snippet: Contextual content preview
+
+    """
+    cache.ensure_ready()
+    index = cache.get_index()
+    results = index.search(query, k=k) if index else []
+    url_cache = cache.get_url_cache()
+
+    # Collect top-N URLs that need hydration (no content yet)
+    to_hydrate: list[str] = []
+    top = results[: min(len(results), cache.SNIPPET_HYDRATE_MAX)]
+    for _, doc in top:
+        url = doc.uri
+        cached = url_cache.get(url)
+        if cached is None or not cached.content:
+            to_hydrate.append(url)
+
+    # Hydrate concurrently (best-effort; ignore failures)
+    cache.hydrate_pages(to_hydrate)
+
+    # Build response with real content snippets when available
+    return_docs: List[Dict[str, Any]] = []
+    for score, doc in results:
+        page = url_cache.get(doc.uri)
+        snippet = text_processor.make_snippet(page, doc.display_title)
+        return_docs.append(
+            {
+                "url": doc.uri,
+                "title": doc.display_title,
+                "score": round(score, 3),
+                "snippet": snippet,
+            }
+        )
+    return return_docs
 
 
 @mcp.tool()
-async def model_providers() -> str:
-    """Documentation on using different model providers in Strands Agents."""
-    return pkg_resources.joinpath("content", "model_providers.md").read_text(
-        encoding="utf-8"
-    )
+def fetch_doc(uri: str) -> Dict[str, Any]:
+    """Fetch full document content by URL.
+    
+    Args:
+        uri: Document URI (supports http/https URLs)
+        
+    Returns:
+        Dictionary containing:
+        - url: Canonical document URL
+        - title: Document title
+        - content: Full document text content
+        - error: Error message (if fetch failed)
+
+    """
+    cache.ensure_ready()
+
+    # Accept HTTP/HTTPS URLs
+    if uri.startswith("http://") or uri.startswith("https://"):
+        url = uri
+    else:
+        return {"error": "unsupported uri", "url": uri}
+
+    page = cache.ensure_page(url)
+    if page is None:
+        return {"error": "fetch failed", "url": url}
+
+    return {
+        "url": url,  # single link field
+        "title": page.title,
+        "content": page.content,
+    }
 
 
-@mcp.tool()
-async def agent_tools() -> str:
-    """Documentation on adding tools to agents using Strands Agents."""
-    return pkg_resources.joinpath("content", "tools.md").read_text(encoding="utf-8")
+# ---- Entry ------------------------------------------------------------------
 
 
-def main():
+def main() -> None:
+    """Main entry point for the MCP server.
+    
+    Initializes the document cache and starts the FastMCP server.
+    The cache is loaded with document titles only for fast startup,
+    with full content fetched on-demand.
+    """
+    cache.ensure_ready()  # fast boot: titles only; bodies on-demand
     mcp.run()
