@@ -4,19 +4,19 @@ from mcp.server.fastmcp import FastMCP
 
 from .utils import cache, text_processor
 
-# Application configuration
-APP_NAME = "strands_mcp_server"
+
+APP_NAME = "strands-agents-mcp-server"
 mcp = FastMCP(APP_NAME)
 
 
 @mcp.tool()
 def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
     """Search curated documentation and return ranked results with snippets.
-    
+
     Args:
         query: Search query string
         k: Maximum number of results to return (default: 5)
-        
+
     Returns:
         List of dictionaries containing:
         - url: Document URL
@@ -30,7 +30,7 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
     results = index.search(query, k=k) if index else []
     url_cache = cache.get_url_cache()
 
-    # Collect top-N URLs that need hydration (no content yet)
+    # Collect top-k URLs that need hydration (no content yet)
     to_hydrate: list[str] = []
     top = results[: min(len(results), cache.SNIPPET_HYDRATE_MAX)]
     for _, doc in top:
@@ -61,10 +61,10 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
 @mcp.tool()
 def fetch_doc(uri: str) -> Dict[str, Any]:
     """Fetch full document content by URL.
-    
+
     Args:
         uri: Document URI (supports http/https URLs)
-        
+
     Returns:
         Dictionary containing:
         - url: Canonical document URL
@@ -86,7 +86,7 @@ def fetch_doc(uri: str) -> Dict[str, Any]:
         return {"error": "fetch failed", "url": url}
 
     return {
-        "url": url,  # single link field
+        "url": url,
         "title": page.title,
         "content": page.content,
     }
@@ -97,10 +97,10 @@ def fetch_doc(uri: str) -> Dict[str, Any]:
 
 def main() -> None:
     """Main entry point for the MCP server.
-    
+
     Initializes the document cache and starts the FastMCP server.
     The cache is loaded with document titles only for fast startup,
     with full content fetched on-demand.
     """
-    cache.ensure_ready()  # fast boot: titles only; bodies on-demand
+    cache.ensure_ready()
     mcp.run()

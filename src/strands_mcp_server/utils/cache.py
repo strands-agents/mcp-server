@@ -14,11 +14,11 @@ SNIPPET_HYDRATE_MAX = 5  # how many top results to hydrate with content
 
 def load_links_only() -> None:
     """Parse llms.txt files and index curated titles without fetching content.
-    
+
     This function initializes the search index with document titles and URLs from
     configured llms.txt files. Content is not fetched during initialization for
     faster startup times.
-    
+
     Side Effects:
         - Updates global _INDEX with document entries
         - Populates _URL_TITLES with curated titles
@@ -47,7 +47,7 @@ def load_links_only() -> None:
 
 def ensure_ready() -> None:
     """Ensure the search index is initialized and ready for use.
-    
+
     Calls load_links_only() if the index hasn't been loaded yet.
     This is the main entry point for index initialization.
     """
@@ -57,10 +57,10 @@ def ensure_ready() -> None:
 
 def ensure_page(url: str) -> doc_fetcher.Page | None:
     """Ensure a page is cached, fetching it if necessary.
-    
+
     Args:
         url: The URL of the page to ensure is cached
-        
+
     Returns:
         The cached or newly fetched Page object, or None if fetch failed
 
@@ -80,7 +80,7 @@ def ensure_page(url: str) -> doc_fetcher.Page | None:
 
 def hydrate_pages(urls: list[str]) -> None:
     """Fetch and cache multiple pages sequentially.
-    
+
     Args:
         urls: List of URLs to fetch and cache
 
@@ -91,7 +91,7 @@ def hydrate_pages(urls: list[str]) -> None:
 
 def get_index() -> indexer.IndexSearch | None:
     """Get the current search index instance.
-    
+
     Returns:
         The initialized IndexSearch instance, or None if not yet loaded
     """
@@ -100,7 +100,7 @@ def get_index() -> indexer.IndexSearch | None:
 
 def get_url_cache() -> Dict[str, doc_fetcher.Page | None]:
     """Get the URL cache dictionary.
-    
+
     Returns:
         Dictionary mapping URLs to cached Page objects (or None if not fetched)
     """
@@ -109,7 +109,7 @@ def get_url_cache() -> Dict[str, doc_fetcher.Page | None]:
 
 def get_url_titles() -> Dict[str, str]:
     """Get the curated URL titles mapping.
-    
+
     Returns:
         Dictionary mapping URLs to their curated display titles from llms.txt
     """

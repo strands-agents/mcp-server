@@ -16,7 +16,7 @@ _MD_LINK_TEXT = re.compile(r"\[([^\]]+)\]\([^)]+\)")
 @dataclass(slots=True)
 class Doc:
     """A single indexed document with display and search metadata.
-    
+
     Attributes:
         uri: Unique identifier/URL for the document
         display_title: Human-readable title shown to users
@@ -39,17 +39,17 @@ _SHORT_PAGE_THRESHOLD = 800  # character threshold for short pages
 
 class IndexSearch:
     """Lightweight inverted index with TF-IDF scoring and Markdown awareness.
-    
+
     This class provides document indexing and search functionality optimized for
     technical documentation. It uses TF-IDF scoring with special handling for
     Markdown structure elements like headers, code blocks, and links.
-    
+
     Features:
         - Indexes searchable titles (not display titles) for synonym support
         - Adaptive title boosting based on content length
         - Enhanced scoring for Markdown elements (headers, code, links)
         - Lightweight implementation without external dependencies
-    
+
     Attributes:
         docs: List of indexed documents
         doc_frequency: Token document frequency for IDF calculation
@@ -64,10 +64,10 @@ class IndexSearch:
 
     def add(self, doc: Doc) -> None:
         """Add a document to the search index.
-        
+
         Args:
             doc: Document to add to the index
-            
+
         Note:
             Extracts and weights different content types:
             - Titles: Highest weight for search relevance
@@ -114,14 +114,14 @@ class IndexSearch:
 
     def search(self, query: str, k: int = 8) -> List[Tuple[float, Doc]]:
         """Search the index and return ranked results.
-        
+
         Args:
             query: Search query string
             k: Maximum number of results to return
-            
+
         Returns:
             List of (score, document) tuples sorted by relevance (highest first)
-            
+
         Note:
             Uses TF-IDF scoring with Markdown-aware enhancements:
             - Title matches receive adaptive boosting
@@ -129,12 +129,13 @@ class IndexSearch:
             - Code and link matches get 2x weight
             - Empty content gets higher title boost for better ranking
         """
+
         def _title_boost_for(doc: Doc) -> int:
             """Calculate title boost factor based on document content length.
-            
+
             Args:
                 doc: Document to calculate boost for
-                
+
             Returns:
                 Boost multiplier for title matches
             """
@@ -147,14 +148,14 @@ class IndexSearch:
 
         def _calculate_md_score(doc: Doc, token: str) -> float:
             """Calculate enhanced relevance score for Markdown content.
-            
+
             Args:
                 doc: Document to score
                 token: Search token to score against
-                
+
             Returns:
                 Weighted relevance score considering Markdown structure
-                
+
             Note:
                 Applies different weights to content types:
                 - Title matches: Variable boost (8x/5x/3x based on content length)

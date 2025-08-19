@@ -6,10 +6,10 @@ _CODE_FENCE = re.compile(r"```.*?```", re.S)
 
 def normalize(s: str) -> str:
     """Normalize whitespace in a string.
-    
+
     Args:
         s: Input string to normalize
-        
+
     Returns:
         String with collapsed whitespace and trimmed edges
     """
@@ -18,13 +18,13 @@ def normalize(s: str) -> str:
 
 def title_from_url(url: str) -> str:
     """Generate a human-readable title from a URL path.
-    
+
     Args:
         url: URL to extract title from
-        
+
     Returns:
         Formatted title derived from the URL path
-        
+
     Note:
         Removes 'index.*' files, converts hyphens/underscores to spaces,
         and applies title case. Falls back to 'Documentation' if no path.
@@ -41,15 +41,15 @@ def title_from_url(url: str) -> str:
 
 def canonical_display_title(url: str, extracted: str | None, url_titles: dict[str, str]) -> str:
     """Determine the best display title for a document.
-    
+
     Args:
         url: Document URL
         extracted: Title extracted from document content (if any)
         url_titles: Mapping of URLs to curated titles from llms.txt
-        
+
     Returns:
         The best available title for display purposes
-        
+
     Priority:
         1. Curated title from llms.txt (highest priority)
         2. URL-derived title if extracted title is missing/generic
@@ -73,11 +73,11 @@ def canonical_display_title(url: str, extracted: str | None, url_titles: dict[st
 
 def index_title_variants(display_title: str, url: str) -> str:
     """Generate searchable title variants for indexing.
-    
+
     Args:
         display_title: The main display title
         url: Document URL for additional context
-        
+
     Returns:
         Space-separated string of title variants for search indexing
 
@@ -104,13 +104,13 @@ def index_title_variants(display_title: str, url: str) -> str:
 
 def normalize_for_comparison(string: str) -> str:
     """Normalize string for case-insensitive comparison.
-    
+
     Args:
         string: Input string to normalize
-        
+
     Returns:
         Lowercase string with only alphanumeric characters and spaces
-        
+
     Note:
         Removes punctuation and normalizes whitespace for reliable comparison.
     """
@@ -121,12 +121,12 @@ def normalize_for_comparison(string: str) -> str:
 
 def make_snippet(page, display_title: str, max_chars: int = 300) -> str:
     """Create a contextual snippet from page content.
-    
+
     Args:
         page: Page object with content attribute (or None)
         display_title: Title to use as fallback
         max_chars: Maximum length of the snippet
-        
+
     Returns:
         Contextual snippet text, truncated with ellipsis if needed
 
@@ -157,10 +157,10 @@ def make_snippet(page, display_title: str, max_chars: int = 300) -> str:
 
     def is_heading_or_toc(line: str) -> bool:
         """Check if a line is a heading or table of contents entry.
-        
+
         Args:
             line: Text line to check
-            
+
         Returns:
             True if line appears to be a heading or TOC entry
         """

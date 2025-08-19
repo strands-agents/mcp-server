@@ -39,45 +39,6 @@ To send us a pull request, please:
 GitHub provides additional document on [forking a repository](https://help.github.com/articles/fork-a-repo/) and
 [creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
 
-## Documentation Sync
-
-This repository includes an automated GitHub Action that synchronizes documentation from the [Strands Agents docs repository](https://github.com/strands-agents/docs) to the MCP server's content folder. This ensures that the MCP server always provides the most up-to-date documentation.
-
-### How It Works
-
-The sync process:
-1. Runs automatically on a daily schedule (midnight UTC)
-2. Runs when changes are pushed to the main branch
-3. Runs before building packages for PyPI releases
-4. Can be triggered manually through the GitHub Actions interface
-5. Copies markdown files from the docs repository to the content folder
-6. Validates markdown files to ensure they are properly formatted
-7. Registers new documentation files as tools automatically
-
-### Triggering the Sync Manually
-
-To manually trigger the documentation sync:
-
-1. Go to the [Actions tab](https://github.com/strands-agents/mcp-server/actions) in the repository
-2. Select the "Sync Documentation" workflow from the left sidebar
-3. Click the "Run workflow" button
-4. Select the branch you want to run the workflow on (typically "main")
-5. Click "Run workflow" to start the sync process
-
-The workflow will check out both repositories, run the sync script, and commit any changes back to the repository. You can monitor the progress and see the results in the Actions tab.
-
-### Sync Statistics
-
-After each sync, the workflow generates statistics about what was updated:
-- Added files
-- Updated files
-- Deleted files
-- Unchanged files
-- Validation failures (if any)
-- Total changes
-
-These statistics are available in the workflow run summary and can help you track the documentation updates over time.
-
 
 ## Finding contributions to work on
 Looking at the existing issues is a great way to find something to contribute on. As our projects, by default, use the default GitHub issue labels (enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any 'help wanted' issues is a great place to start.

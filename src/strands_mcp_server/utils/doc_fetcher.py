@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from ..config import doc_config
 
-#Example: "[Quickstart](https://strandsagents.com/.../index.md)"
+# Example: "[Quickstart](https://strandsagents.com/.../index.md)"
 _MD_LINK = re.compile(r"\[([^\]]+)\]\((https?://[^\)]+)\)")
 _HTML_BLOCK = re.compile(r"(?is)<(script|style|noscript).*?>.*?</\1>")
 _TAG = re.compile(r"(?s)<[^>]+>")
@@ -17,7 +17,7 @@ _META_OG = re.compile(r'(?is)<meta[^>]+property=["\']og:title["\'][^>]+content=[
 @dataclass
 class Page:
     """Represents a fetched and cleaned documentation page.
-    
+
     Attributes:
         url: The source URL of the page
         title: Extracted or derived title of the page
@@ -31,13 +31,13 @@ class Page:
 
 def _get(url: str) -> str:
     """Fetch content from a URL with proper headers and timeout.
-    
+
     Args:
         url: The URL to fetch
-        
+
     Returns:
         The decoded text content of the response
-        
+
     Raises:
         urllib.error.URLError: If the request fails
     """
@@ -48,10 +48,10 @@ def _get(url: str) -> str:
 
 def parse_llms_txt(url: str) -> list[tuple[str, str]]:
     """Parse an llms.txt file and extract document links.
-    
+
     Args:
         url: URL of the llms.txt file to parse
-        
+
     Returns:
         List of (title, url) tuples extracted from markdown links
 
@@ -62,10 +62,10 @@ def parse_llms_txt(url: str) -> list[tuple[str, str]]:
 
 def _html_to_text(raw_html: str) -> str:
     """Convert HTML to plain text using stdlib only.
-    
+
     Args:
         raw_html: Raw HTML content to convert
-        
+
     Returns:
         Plain text with HTML tags removed and entities unescaped
 
@@ -80,10 +80,10 @@ def _html_to_text(raw_html: str) -> str:
 
 def _extract_html_title(raw_html: str) -> str | None:
     """Extract title from HTML content using multiple strategies.
-    
+
     Args:
         raw_html: Raw HTML content to extract title from
-        
+
     Returns:
         Extracted title string, or None if no title found
 
@@ -103,10 +103,10 @@ def _extract_html_title(raw_html: str) -> str | None:
 
 def fetch_and_clean(page_url: str) -> Page:
     """Fetch a web page and return cleaned content.
-    
+
     Args:
         page_url: URL of the page to fetch
-        
+
     Returns:
         Page object with URL, title, and cleaned content
 
