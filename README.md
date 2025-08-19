@@ -110,7 +110,7 @@ In `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "strands": {
+    "strands-agents": {
       "command": "uvx",
       "args": ["strands-agents-mcp-server"],
       "env": {
