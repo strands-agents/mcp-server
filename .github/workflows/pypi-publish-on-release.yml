@@ -16,69 +16,43 @@ jobs:
   build:
     name: Build distribution 📦
     permissions:
-      contents: read  # Only need read access since we're not committing changes
+      contents: read
     needs:
       - call-test-lint
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-        fetch-depth: 1  # Only need the latest commit
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    # Checkout the Strands Agents docs repository
-    - name: Checkout Docs Repository
-      uses: actions/checkout@v4
-      with:
-        repository: strands-agents/docs
-        path: docs-repo
-        fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-
-    - name: Install dependencies
-      run: |
-        python -m pip3 install --upgrade pip3
-        pip3 install hatch twine
-        pip3 install -e ".[dev]"
-    - name: Validate version
-      run: |
-        version=$(hatch version)
-        if [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Valid version format"
-            exit 0
-        else
-            echo "Invalid version format"
-            exit 1
-        fi
-        
-    # Sync documentation before building the package
-    # This ensures the latest docs are included in the package without committing to the repo
-    - name: Sync latest documentation
-      id: sync-docs
-      run: |
-        echo "Syncing latest documentation from Strands Agents docs repository..."
-        python scripts/sync_docs.py --source ./docs-repo/docs --target ./src/strands_mcp_server/content --validate
-      env:
-        LOG_LEVEL: INFO
-    - name: Build document index
-      id: index
-      run: |
-        python mcp-server/scripts/indexer.py --content-dir ./mcp-server/src/strands_mcp_server/content --output ./mcp-server/src/strands_mcp_server/content/document_index.json --log-level INFO
-      env:
-        LOG_LEVEL: INFO
-    - name: Build
-      run: |
-        hatch build
-    - name: Store the distribution packages
-      uses: actions/upload-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch twine
+      - name: Validate version
+        run: |
+          version=$(hatch version)
+          if [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Valid version format"
+              exit 0
+          else
+              echo "Invalid version format"
+              exit 1
+          fi
+      - name: Build
+        run: |
+          hatch build
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
 
   deploy:
     name: Upload release to PyPI
@@ -96,10 +70,10 @@ jobs:
       id-token: write
 
     steps:
-    - name: Download all the dists
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
-    - name: Publish distribution 📦 to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
