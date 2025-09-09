@@ -70,23 +70,12 @@ def ensure_page(url: str) -> doc_fetcher.Page | None:
         return page
     try:
         raw = doc_fetcher.fetch_and_clean(url)
-        display_title = text_processor.canonical_display_title(url, raw.title, _URL_TITLES)
+        display_title = text_processor.format_display_title(url, raw.title, _URL_TITLES)
         page = doc_fetcher.Page(url=url, title=display_title, content=raw.content)
         _URL_CACHE[url] = page
         return page
     except Exception:
         return None
-
-
-def hydrate_pages(urls: list[str]) -> None:
-    """Fetch and cache multiple pages sequentially.
-
-    Args:
-        urls: List of URLs to fetch and cache
-
-    """
-    for url in urls:
-        ensure_page(url)
 
 
 def get_index() -> indexer.IndexSearch | None:

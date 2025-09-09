@@ -1,5 +1,7 @@
 import re
 
+from .doc_fetcher import Page
+
 _WHITESPACE = re.compile(r"\s+")
 _CODE_FENCE = re.compile(r"```.*?```", re.S)
 
@@ -39,7 +41,7 @@ def title_from_url(url: str) -> str:
     return slug.title() or "Documentation"
 
 
-def canonical_display_title(url: str, extracted: str | None, url_titles: dict[str, str]) -> str:
+def format_display_title(url: str, extracted: str | None, url_titles: dict[str, str]) -> str:
     """Determine the best display title for a document.
 
     Args:
@@ -119,7 +121,7 @@ def normalize_for_comparison(string: str) -> str:
     return _WHITESPACE.sub(" ", processed_string).strip()
 
 
-def make_snippet(page, display_title: str, max_chars: int = 300) -> str:
+def make_snippet(page: Page | None, display_title: str, max_chars: int = 300) -> str:
     """Create a contextual snippet from page content.
 
     Args:

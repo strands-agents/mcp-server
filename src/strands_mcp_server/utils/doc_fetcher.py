@@ -57,7 +57,9 @@ def parse_llms_txt(url: str) -> list[tuple[str, str]]:
 
     """
     txt = _get(url)
-    return [(m.group(1).strip() or m.group(2).strip(), m.group(2).strip()) for m in _MD_LINK.finditer(txt)]
+    return [
+        (match.group(1).strip() or match.group(2).strip(), match.group(2).strip()) for match in _MD_LINK.finditer(txt)
+    ]
 
 
 def _html_to_text(raw_html: str) -> str:
@@ -88,15 +90,15 @@ def _extract_html_title(raw_html: str) -> str | None:
         Extracted title string, or None if no title found
 
     """
-    m = _TITLE_TAG.search(raw_html)
-    if m:
-        return html.unescape(m.group(1)).strip()
-    m = _META_OG.search(raw_html)
-    if m:
-        return html.unescape(m.group(1)).strip()
-    m = _H1_TAG.search(raw_html)
-    if m:
-        inner = _TAG.sub(" ", m.group(1))
+    match = _TITLE_TAG.search(raw_html)
+    if match:
+        return html.unescape(match.group(1)).strip()
+    match = _META_OG.search(raw_html)
+    if match:
+        return html.unescape(match.group(1)).strip()
+    match = _H1_TAG.search(raw_html)
+    if match:
+        inner = _TAG.sub(" ", match.group(1))
         return html.unescape(inner).strip()
     return None
 

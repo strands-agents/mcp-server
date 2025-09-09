@@ -4,7 +4,6 @@ from mcp.server.fastmcp import FastMCP
 
 from .utils import cache, text_processor
 
-
 APP_NAME = "strands-agents-mcp-server"
 mcp = FastMCP(APP_NAME)
 
@@ -31,16 +30,12 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
     url_cache = cache.get_url_cache()
 
     # Collect top-k URLs that need hydration (no content yet)
-    to_hydrate: list[str] = []
+    # Simplified: Direct hydration in one pass
     top = results[: min(len(results), cache.SNIPPET_HYDRATE_MAX)]
     for _, doc in top:
-        url = doc.uri
-        cached = url_cache.get(url)
+        cached = url_cache.get(doc.uri)
         if cached is None or not cached.content:
-            to_hydrate.append(url)
-
-    # Hydrate concurrently (best-effort; ignore failures)
-    cache.hydrate_pages(to_hydrate)
+            cache.ensure_page(doc.uri)
 
     # Build response with real content snippets when available
     return_docs: List[Dict[str, Any]] = []
@@ -90,6 +85,7 @@ def fetch_doc(uri: str) -> Dict[str, Any]:
         "title": page.title,
         "content": page.content,
     }
+
 
 def main() -> None:
     """Main entry point for the MCP server.
