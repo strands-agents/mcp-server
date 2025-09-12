@@ -16,7 +16,7 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
     
     **User Guide Topics:**
     - Agent concepts (agent loop, conversation management, hooks, prompts, state)
-    - Model providers (Amazon Bedrock, Anthropic, OpenAI, Ollama, LiteLLM, etc.)
+    - Model providers (Amazon Bedrock, Anthropic, Cohere, LiteLLM, LlamaAPI, MistralAI, Ollama, OpenAI, SageMaker, Writer)
     - Multi-agent patterns (Agent2Agent, Agents as Tools, Graph, Swarm, Workflow)
     - Tools (Python tools, MCP tools, community tools, executors)
     - Deployment guides (EC2, EKS, Fargate, Lambda, Bedrock AgentCore)
@@ -32,7 +32,7 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
     Use this to find relevant Strands Agents documentation for any development question.
 
     Args:
-        query: Search query string (e.g., "bedrock model", "multi-agent workflow", "MCP tools")
+        query: Search query string (e.g., "bedrock model", "tell me about a2a", "how to use MCP tools")
         k: Maximum number of results to return (default: 5)
 
     Returns:
