@@ -13,22 +13,23 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
     """Search curated documentation and return ranked results with snippets.
 
     This tool provides access to the complete Strands Agents documentation including:
-    
+
     **User Guide Topics:**
     - Agent concepts (agent loop, conversation management, hooks, prompts, state)
-    - Model providers (Amazon Bedrock, Anthropic, Cohere, LiteLLM, LlamaAPI, MistralAI, Ollama, OpenAI, SageMaker, Writer)
+    - Model providers (Amazon Bedrock, Anthropic, Cohere, LiteLLM, LlamaAPI,
+            MistralAI, Ollama, OpenAI, SageMaker, Writer, Gemini)
     - Multi-agent patterns (Agent2Agent, Agents as Tools, Graph, Swarm, Workflow)
     - Tools (Python tools, MCP tools, community tools, executors)
     - Deployment guides (EC2, EKS, Fargate, Lambda, Bedrock AgentCore)
     - Observability & evaluation (logs, metrics, traces, evaluation)
     - Safety & security (guardrails, PII redaction, responsible AI)
-    
+
     **API Reference:**
     - Complete API documentation for Agent, Models, Tools, Handlers, etc.
-    
+
     **Examples:**
     - Code samples and implementation examples
-    
+
     Use this to find relevant Strands Agents documentation for any development question.
 
     Args:
@@ -78,15 +79,15 @@ def fetch_doc(uri: str) -> Dict[str, Any]:
 
     Retrieves complete Strands Agents documentation content from URLs found via search_docs
     or provided directly. Use this to get full documentation pages including:
-    
+
     - Complete user guides with code examples
-    - Detailed API reference documentation  
+    - Detailed API reference documentation
     - Step-by-step tutorials and implementation guides
     - Full deployment and configuration instructions
     - Comprehensive multi-agent pattern examples
     - Complete model provider setup guides
-    
-    This provides the full content when search snippets aren't sufficient for 
+
+    This provides the full content when search snippets aren't sufficient for
     understanding or implementing Strands Agents features.
 
     Args:
