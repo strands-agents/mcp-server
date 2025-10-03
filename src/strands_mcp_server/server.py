@@ -74,7 +74,7 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def fetch_doc(uri: str) -> Dict[str, Any]:
+def fetch_doc(uri: str = "") -> Dict[str, Any]:
     """Fetch full document content by URL.
 
     Retrieves complete Strands Agents documentation content from URLs found via search_docs
@@ -91,7 +91,7 @@ def fetch_doc(uri: str) -> Dict[str, Any]:
     understanding or implementing Strands Agents features.
 
     Args:
-        uri: Document URI (supports http/https URLs)
+        uri: Document URI (supports http/https URLs). If empty, returns all available URLs.
 
     Returns:
         Dictionary containing:
@@ -99,9 +99,22 @@ def fetch_doc(uri: str) -> Dict[str, Any]:
         - title: Document title
         - content: Full document text content
         - error: Error message (if fetch failed)
+        
+        Or when uri is empty:
+        - urls: List of all available document URLs with titles
 
     """
     cache.ensure_ready()
+
+    # If no URI provided, return all available URLs (llms.txt catalog)
+    if not uri:
+        url_titles = cache.get_url_titles()
+        return {
+            "urls": [
+                {"url": url, "title": title}
+                for url, title in url_titles.items()
+            ]
+        }
 
     # Accept HTTP/HTTPS URLs
     if uri.startswith("http://") or uri.startswith("https://"):
