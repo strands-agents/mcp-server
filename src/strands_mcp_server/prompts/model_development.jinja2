@@ -1,0 +1,84 @@
+# Strands Custom Model Provider Development - Context Documentation
+
+## Task Description
+
+Develop a custom Strands model provider with the following requirements:
+
+**Use Case:**
+{{ use_case }}
+
+{% if model_details %}
+**Model Details:**
+{{ model_details }}
+{% endif %}
+
+{% if api_documentation %}
+**API Documentation/Reference:**
+{{ api_documentation }}
+{% endif %}
+
+{% if auth_requirements %}
+**Authentication Requirements:**
+{{ auth_requirements }}
+{% endif %}
+
+{% if special_features %}
+**Special Features Required:**
+{{ special_features }}
+{% endif %}
+
+---
+
+## Custom Model Provider Guide
+
+{% if custom_model_content %}
+{{ custom_model_content | truncate(10000, True, '...') }}
+{% else %}
+### Overview
+
+Custom model providers allow integration with proprietary LLM services, specialized inference endpoints, or organization-specific models.
+
+### Core Components
+
+1. **Model Class**: Inherits from `strands.models.Model`
+2. **Request Processing**: Transform Strands messages to provider format
+3. **Response Handling**: Convert provider responses to Strands format
+4. **Error Management**: Handle API errors gracefully
+{% endif %}
+
+---
+
+## Models API Reference
+
+{% if models_api_content %}
+{% set filtered_api_step1 = models_api_content | regex_replace('`````.*?`````', '') %}
+{% set filtered_api = filtered_api_step1 | regex_replace('````.*?````', '') %}
+{{ filtered_api | truncate(15000, True, '...') }}
+{% endif %}
+
+---
+
+## Implementation Notes
+
+- Implement message format conversion between Strands and provider formats
+- Support authentication methods (API keys, OAuth, custom)
+- Include retry logic with exponential backoff
+- Consider streaming support for long outputs
+- Add proper logging for debugging
+{% if include_examples %}
+
+## Example Structure
+
+```python
+from strands.models import Model
+
+class CustomModelProvider(Model):
+    def __init__(self, model_id: str, api_key: str = None, **kwargs):
+        super().__init__(model_id=model_id, **kwargs)
+        self.api_key = api_key
+    
+    def generate(self, messages, **kwargs):
+        # Convert messages, make request, parse response
+        pass
+```
+{% endif %}

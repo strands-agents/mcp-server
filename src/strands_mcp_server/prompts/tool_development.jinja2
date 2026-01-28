@@ -1,0 +1,64 @@
+# Strands Tool Development - Context Documentation
+
+## Task Description
+
+Develop a Strands tool with the following requirements:
+
+**Tool Request:**
+{{ request }}
+
+{% if tool_use_examples %}
+**Usage Examples:**
+{{ tool_use_examples }}
+{% endif %}
+
+{% if preferred_libraries %}
+**Preferred Libraries/APIs:**
+{{ preferred_libraries }}
+{% endif %}
+
+---
+
+## Strands Framework Overview
+
+{{ llms_txt_content | default("Strands is a powerful agent framework that enables AI agents to use tools, interact with systems, and accomplish complex tasks autonomously.", true) }}
+
+---
+
+## Python Tools Documentation
+
+{% if python_tools_content %}
+{{ python_tools_content }}
+{% else %}
+### Creating Python Tools
+
+Python tools in Strands use the @tool decorator for simple, type-safe tool creation:
+
+```python
+from strands import tool
+
+@tool
+def my_tool(param: str) -> dict:
+    """Tool description."""
+    return {
+        "status": "success",
+        "content": [{"text": f"Result: {param}"}]
+    }
+```
+
+### Key Principles
+
+1. **Clear Documentation**: Every parameter and return value must be documented
+2. **Type Hints**: Use proper type annotations for all parameters
+3. **Error Handling**: Always handle exceptions gracefully
+4. **Consistent Format**: Return standardized response dictionaries
+{% endif %}
+
+---
+
+## Implementation Notes
+
+- Use the `@tool` decorator pattern from `strands`
+- Return dictionaries with `status` and `content` keys
+- Include comprehensive docstrings with Args and Returns sections
+- Handle errors gracefully and return informative error messages
