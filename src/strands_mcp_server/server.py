@@ -75,23 +75,24 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
 
 @mcp.tool()
 def fetch_doc(uri: str = "") -> Dict[str, Any]:
-    """Fetch full document content by URL.
+    """Fetch the entire content of a documentation page as a single block of text.
 
-    Retrieves complete Strands Agents documentation content from URLs found via search_docs
-    or provided directly. Use this to get full documentation pages including:
+    Returns the complete, unabridged document. This can be very large (some pages
+    exceed 100KB). Prefer browse_doc for targeted reading - it lets you inspect the
+    table of contents first, then fetch only the section you need.
 
-    - Complete user guides with code examples
-    - Detailed API reference documentation
-    - Step-by-step tutorials and implementation guides
-    - Full deployment and configuration instructions
-    - Comprehensive multi-agent pattern examples
-    - Complete model provider setup guides
+    Use fetch_doc only when you genuinely need the full document, for example to
+    summarize an entire page end-to-end, or to search across all sections at once.
 
-    This provides the full content when search snippets aren't sufficient for
-    understanding or implementing Strands Agents features.
+    Recommended workflow:
+    1. search_docs("your query") - find relevant URLs
+    2. browse_doc(uri="...") - see structure and section summaries
+    3. browse_doc(uri="...", section="3") - read just the section you need
+    4. fetch_doc(uri="...") - only if you need the entire document
 
     Args:
-        uri: Document URI (supports http/https URLs). If empty, returns all available URLs.
+        uri: Document URL (must be https://strandsagents.com).
+            If empty, returns a catalog of all available document URLs with titles.
 
     Returns:
         Dictionary containing:
@@ -124,6 +125,109 @@ def fetch_doc(uri: str = "") -> Dict[str, Any]:
         "url": url,
         "title": page.title,
         "content": page.content,
+    }
+
+
+@mcp.tool()
+def browse_doc(uri: str, section: str = "") -> Dict[str, Any]:
+    """Read a documentation page section by section. This is the preferred tool for
+    reading documentation - use it before reaching for fetch_doc.
+
+    Two modes of operation:
+
+    1. **TOC mode** (omit section): Returns a table of contents with section IDs,
+       titles, and short summaries so you can decide which part to read.
+    2. **Section mode** (provide section): Returns the full markdown content of
+       one section, identified by the ID from the TOC (e.g., "3" or "3.2").
+
+    For small documents (under ~8KB), the full content is returned directly
+    regardless of mode, since sectioning would add overhead without benefit.
+
+    Recommended workflow:
+    1. search_docs("your query") - find relevant URLs
+    2. browse_doc(uri="...") - see structure and section summaries
+    3. browse_doc(uri="...", section="3") - read the section you need
+    4. fetch_doc(uri="...") - only if you need the entire document at once
+
+    Args:
+        uri: Document URL (must be https://strandsagents.com).
+            If empty, returns a catalog of all available document URLs with titles.
+        section: Section ID from the TOC (e.g., "3" or "3.2").
+            Omit to get the table of contents.
+
+    Returns:
+        When section is omitted (TOC mode):
+        - url, title: Document metadata
+        - sections: List of sections with id, level, title, summary, children
+
+        When section is provided:
+        - url, title: Document metadata
+        - section_id: Requested section ID
+        - section_title: Section heading text
+        - content: Full markdown content of the section
+
+        For small documents (under ~8KB):
+        - url, title: Document metadata
+        - document_small: true
+        - content: Full document content (returned automatically)
+
+        On error:
+        - error: Error description
+        - url: Requested URL
+
+    """
+    cache.ensure_ready()
+
+    if not uri:
+        url_titles = cache.get_url_titles()
+        return {"urls": [{"url": url, "title": title} for url, title in url_titles.items()]}
+
+    if not uri.startswith("https://strandsagents.com"):
+        return {"error": "only https://strandsagents.com URLs allowed", "url": uri}
+
+    page = cache.ensure_page(uri)
+    if page is None:
+        return {"error": "fetch failed", "url": uri}
+
+    # Small doc: return full content directly
+    if len(page.content.encode("utf-8")) <= text_processor.SMALL_DOC_THRESHOLD:
+        return {
+            "url": uri,
+            "title": page.title,
+            "document_small": True,
+            "content": page.content,
+        }
+
+    sections = text_processor.parse_sections(page.content)
+
+    # No parseable sections: treat as small doc regardless of size
+    if not sections:
+        return {
+            "url": uri,
+            "title": page.title,
+            "document_small": True,
+            "content": page.content,
+        }
+
+    # Section mode: extract specific section
+    if section:
+        result = text_processor.extract_section(page.content, section, sections)
+        if result is None:
+            return {"error": f"section '{section}' not found", "url": uri}
+        return {
+            "url": uri,
+            "title": page.title,
+            "section_id": result["section_id"],
+            "section_title": result["section_title"],
+            "content": result["content"],
+        }
+
+    # TOC mode: return section tree (strip internal fields)
+    clean_sections = [{k: v for k, v in s.items() if not k.startswith("_")} for s in sections]
+    return {
+        "url": uri,
+        "title": page.title,
+        "sections": clean_sections,
     }
 
 

@@ -37,6 +37,7 @@ This MCP server provides curated documentation access to your GenAI tools via ll
 ## Features
 
 - **Smart Document Search**: TF-IDF based search with Markdown-aware scoring that prioritizes titles, headers, and code blocks
+- **Section-Based Browsing**: Browse document structure via table of contents, then fetch only the section you need - more token-efficient than retrieving full pages
 - **Curated Content**: Indexes documentation from llms.txt files with clean, human-readable titles
 - **On-Demand Fetching**: Lazy-loads full document content only when needed for optimal performance
 - **Snippet Generation**: Provides contextual snippets with relevance scoring for quick overview
@@ -54,7 +55,7 @@ including Amazon Q Developer CLI, Anthropic Claude Code, Cline, and Cursor.
 
 Get started quickly with one-click installation buttons for popular MCP clients. Click the buttons below to install servers directly in your IDE:
 
-[![Install in Kiro](https://img.shields.io/badge/Install-Kiro-9046FF?style=for-the-badge&logo=kiro)](https://kiro.dev/launch/mcp/add?name=strands-agents&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22strands-agents-mcp-server%22%5D%2C%22disabled%22%3Afalse%2C%22autoApprove%22%3A%5B%22search_docs%22%2C%22fetch_doc%22%5D%7D)
+[![Install in Kiro](https://img.shields.io/badge/Install-Kiro-9046FF?style=for-the-badge&logo=kiro)](https://kiro.dev/launch/mcp/add?name=strands-agents&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22strands-agents-mcp-server%22%5D%2C%22disabled%22%3Afalse%2C%22autoApprove%22%3A%5B%22search_docs%22%2C%22browse_doc%22%2C%22fetch_doc%22%5D%7D)
 [![Install in Cursor](https://img.shields.io/badge/Install-Cursor-blue?style=for-the-badge&logo=cursor)](https://cursor.com/en-US/install-mcp?name=strands-agents&config=eyJjb21tYW5kIjoidXZ4IHN0cmFuZHMtYWdlbnRzLW1jcC1zZXJ2ZXIifQ%3D%3D)
 [![Install in VS Code](https://img.shields.io/badge/Install-VS_Code-FF9900?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect?url=vscode:mcp/install?%7B%22name%22%3A%22strands-agents%22%2C%22type%22%3A%22stdio%22%2C%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22strands-agents-mcp-server%22%5D%7D)
 
@@ -75,7 +76,7 @@ In `~/.kiro/settings/mcp.json`:
         "FASTMCP_LOG_LEVEL": "INFO"
       },
       "disabled": false,
-      "autoApprove": ["search_docs", "fetch_doc"]
+      "autoApprove": ["search_docs", "browse_doc", "fetch_doc"]
     }
   }
 }
@@ -98,7 +99,7 @@ In `~/.aws/amazonq/mcp.json`:
         "FASTMCP_LOG_LEVEL": "INFO"
       },
       "disabled": false,
-      "autoApprove": ["search_docs", "fetch_doc"]
+      "autoApprove": ["search_docs", "browse_doc", "fetch_doc"]
     }
   }
 }
@@ -143,7 +144,7 @@ In `~/.cursor/mcp.json`:
         "FASTMCP_LOG_LEVEL": "INFO"
       },
       "disabled": false,
-      "autoApprove": ["search_docs", "fetch_doc"]
+      "autoApprove": ["search_docs", "browse_doc", "fetch_doc"]
     }
   }
 }
@@ -206,8 +207,9 @@ The Inspector is also useful for troubleshooting MCP server issues as it provide
    ```
 
 4. **Start using the documentation tools**:
-   - Use `search_docs` to find relevant documentation with intelligent ranking
-   - Use `fetch_doc` to retrieve full content from specific URLs
+   - `search_docs` - Find relevant documentation with intelligent ranking
+   - `browse_doc` - View a page's table of contents, then read individual sections
+   - `fetch_doc` - Retrieve the full content of a page when you need everything
    - The server automatically indexes curated content from llms.txt files
 
 ## Server Development
@@ -217,9 +219,28 @@ git clone https://github.com/strands-agents/mcp-server.git
 cd mcp-server
 python3 -m venv venv
 source venv/bin/activate
-pip3 install -e .
+pip3 install -e ".[dev]"
 
 npx @modelcontextprotocol/inspector python -m strands_mcp_server
+```
+
+### Running Tests
+
+```bash
+# Unit tests (fast, no network access required)
+pytest tests/
+
+# Integration tests (requires network access to strandsagents.com)
+pytest tests_integ/ -v
+
+# All tests
+pytest tests/ tests_integ/ -v
+```
+
+To skip integration tests (e.g., in CI environments without network access):
+
+```bash
+SKIP_INTEG_TESTS=1 pytest tests_integ/
 ```
 
 ## Contributing ❤️
