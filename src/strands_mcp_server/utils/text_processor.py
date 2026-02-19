@@ -7,6 +7,7 @@ _CODE_FENCE = re.compile(r"```.*?```", re.S)
 _MD_HEADER = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
 
 SMALL_DOC_THRESHOLD = 8192  # bytes - docs under this return full content
+_PARAGRAPH_MIN_CHARS = 120  # min chars before breaking a paragraph
 
 
 def normalize(s: str) -> str:
@@ -124,6 +125,13 @@ def normalize_for_comparison(string: str) -> str:
     return _WHITESPACE.sub(" ", processed_string).strip()
 
 
+def _truncate(text: str, max_chars: int) -> str:
+    """Truncate text to max_chars, adding ellipsis if needed."""
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 1].rstrip() + "\u2026"
+
+
 def make_snippet(page: Page | None, display_title: str, max_chars: int = 300) -> str:
     """Create a contextual snippet from page content.
 
@@ -183,7 +191,7 @@ def make_snippet(page: Page | None, display_title: str, max_chars: int = 300) ->
             continue
         buf.append(line)
         # stop when we have a decent paragraph
-        if len(" ".join(buf)) >= 120 or line.endswith("."):
+        if len(" ".join(buf)) >= _PARAGRAPH_MIN_CHARS or line.endswith("."):
             paras.append(" ".join(buf))
             buf = []
             break
@@ -193,9 +201,7 @@ def make_snippet(page: Page | None, display_title: str, max_chars: int = 300) ->
 
     snippet = paras[0] if paras else display_title
     snippet = " ".join(snippet.split())
-    if len(snippet) > max_chars:
-        snippet = snippet[: max_chars - 1].rstrip() + "…"
-    return snippet
+    return _truncate(snippet, max_chars)
 
 
 def _code_fence_ranges(content: str) -> list[tuple[int, int]]:
@@ -258,7 +264,7 @@ def extract_preamble(content: str) -> str:
         preamble = content[:first_h2_pos]
 
     # Strip the first H1 heading line (e.g., "# Page Title\n")
-    preamble = re.sub(r"^#\s+[^\n]*\n?", "", preamble, count=1)
+    preamble = re.sub(r"^#\s+[^\n]*\n?", "", preamble)
 
     return preamble.strip()
 
@@ -371,22 +377,18 @@ def make_section_summary(section_text: str, max_chars: int = 200) -> str:
         if stripped.startswith(("-", "*")) or re.match(r"^\d+\.", stripped):
             continue
         buf.append(line)
-        if len(" ".join(buf)) >= 120 or line.endswith("."):
+        if len(" ".join(buf)) >= _PARAGRAPH_MIN_CHARS or line.endswith("."):
             break
 
     if buf:
         summary = " ".join(buf)
         summary = " ".join(summary.split())
-        if len(summary) > max_chars:
-            summary = summary[: max_chars - 1].rstrip() + "…"
-        return summary
+        return _truncate(summary, max_chars)
 
     # Fallback: no prose, just child headers
     if child_names:
         fallback = "Contains: " + ", ".join(child_names)
-        if len(fallback) > max_chars:
-            fallback = fallback[: max_chars - 1].rstrip() + "…"
-        return fallback
+        return _truncate(fallback, max_chars)
 
     return ""
 
@@ -464,17 +466,5 @@ def extract_section(content: str, section_id: str, sections: list[dict]) -> dict
             "content": content[start:end].rstrip(),
         }
 
-    # Deeper nesting (3+ parts) - walk the tree
-    if len(parts) >= 3:
-        # For now, find the header by walking all headers in the section
-        # This handles arbitrary depth
-        child_idx = indices[1]
-        children = section.get("_children_internal", [])
-        if child_idx < 1 or child_idx > len(children):
-            return None
-
-        # For 3+ levels, we need to find sub-children within the child's range
-        # This is a simplified approach: not supported for v1
-        return None
-
+    # 3+ nesting levels not supported
     return None

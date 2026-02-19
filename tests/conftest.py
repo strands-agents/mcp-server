@@ -80,10 +80,10 @@ def headers_in_code_blocks_doc():
 def no_h2_doc():
     """Document with only # and ### headers, no ## sections.
 
-    Note: Only used with parse_sections() directly, not through browse_doc,
-    so size relative to SMALL_DOC_THRESHOLD does not matter.
+    Used by both parse_sections() unit tests and browse_doc server tests.
+    Padded above SMALL_DOC_THRESHOLD so browse_doc takes the TOC/fallback path.
     """
-    return "# Title\n\n" + "Some content.\n\n" * 500 + "### Subsection\n\nMore content.\n"
+    return "# Title\n\n" + "Some content.\n\n" * 600 + "### Subsection\n\nMore content.\n"
 
 
 @pytest.fixture(scope="module")

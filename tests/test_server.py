@@ -40,6 +40,7 @@ class TestBrowseDocTocMode:
         tru_result = browse_doc(uri="https://strandsagents.com/small.md")
 
         assert tru_result["document_small"] is True
+        assert tru_result["reason"] == "size"
         assert "content" in tru_result
         assert "sections" not in tru_result
 
@@ -54,6 +55,7 @@ class TestBrowseDocTocMode:
 
         # Section param should be ignored for small docs
         assert tru_result["document_small"] is True
+        assert tru_result["reason"] == "size"
         assert "content" in tru_result
         assert "section_id" not in tru_result
 
@@ -80,6 +82,7 @@ class TestBrowseDocTocMode:
 
         # No ## sections means fallback to full content
         assert tru_result["document_small"] is True
+        assert tru_result["reason"] == "no_sections"
         assert "content" in tru_result
         assert "sections" not in tru_result
 
@@ -116,12 +119,6 @@ class TestBrowseDocSectionMode:
 @patch("strands_mcp_server.server.cache")
 class TestBrowseDocErrors:
     """Tests for browse_doc error handling."""
-
-    def test_invalid_url_returns_error(self, mock_cache):
-        tru_result = browse_doc(uri="https://evil.com/hack")
-
-        exp_error = "only https://strandsagents.com URLs allowed"
-        assert tru_result["error"] == exp_error
 
     @pytest.mark.parametrize(
         "malicious_uri",

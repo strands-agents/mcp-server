@@ -152,6 +152,7 @@ def browse_doc(uri: str, section: str = "") -> Dict[str, Any]:
             "url": uri,
             "title": page.title,
             "document_small": True,
+            "reason": "size",
             "content": page.content,
         }
 
@@ -163,6 +164,7 @@ def browse_doc(uri: str, section: str = "") -> Dict[str, Any]:
             "url": uri,
             "title": page.title,
             "document_small": True,
+            "reason": "no_sections",
             "content": page.content,
         }
 

@@ -26,6 +26,9 @@ class TestBrowseDocTocModeLive:
             assert "level" in section
             assert section["level"] == 2
 
+        assert "preamble" in result, "TOC response should include preamble"
+        assert result["preamble"], "Preamble should not be empty for this doc"
+
 
 class TestBrowseDocSectionModeLive:
     """Test section extraction against real documentation pages."""
