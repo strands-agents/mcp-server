@@ -223,6 +223,46 @@ def _in_code_block(pos: int, ranges: list[tuple[int, int]]) -> bool:
     return any(start <= pos < end for start, end in ranges)
 
 
+def extract_preamble(content: str) -> str:
+    """Extract the preamble text before the first H2 section.
+
+    The preamble is the introductory content at the top of a markdown document,
+    after the title heading but before the first ## section. The H1 heading line
+    itself is stripped (it is already available as the document title).
+
+    If no H2 sections exist, the entire content (minus the H1 line) is returned.
+
+    Args:
+        content: Raw markdown text
+
+    Returns:
+        Preamble text with H1 line stripped, or empty string if no content exists
+    """
+    if not content:
+        return ""
+
+    fence_ranges = _code_fence_ranges(content)
+
+    # Find first real ## header (not inside a code block)
+    first_h2_pos = None
+    for m in _MD_HEADER.finditer(content):
+        level = len(m.group(1))
+        if level == 2 and not _in_code_block(m.start(), fence_ranges):
+            first_h2_pos = m.start()
+            break
+
+    # No H2 found - entire content after H1 is the preamble
+    if first_h2_pos is None:
+        preamble = content
+    else:
+        preamble = content[:first_h2_pos]
+
+    # Strip the first H1 heading line (e.g., "# Page Title\n")
+    preamble = re.sub(r"^#\s+[^\n]*\n?", "", preamble, count=1)
+
+    return preamble.strip()
+
+
 def parse_sections(content: str) -> list[dict]:
     """Parse markdown content into a hierarchical section tree.
 

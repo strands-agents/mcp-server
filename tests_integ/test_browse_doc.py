@@ -51,6 +51,15 @@ class TestBrowseDocTocModeLive:
                 assert "title" in child
                 assert "." in child["id"]  # Dotted notation like "1.1"
 
+    def test_toc_includes_preamble(self, live_cache, large_doc_page):
+        """TOC response should include preamble text from before first ## section."""
+        result = browse_doc(uri=LARGE_DOC_URL)
+
+        assert "preamble" in result
+        assert isinstance(result["preamble"], str)
+        # Preamble should not contain the H1 title (that's in the title field)
+        assert not result["preamble"].startswith("# ")
+
     def test_toc_strips_internal_fields(self, live_cache, large_doc_page):
         """TOC response must not expose internal _start or _children_internal."""
         result = browse_doc(uri=LARGE_DOC_URL)
@@ -155,3 +164,16 @@ class TestBrowseDocEdgeCasesLive:
 
         assert "error" in result
         assert "strandsagents.com" in result["error"]
+
+    @pytest.mark.parametrize(
+        "malicious_uri",
+        [
+            "https://strandsagents.com.evil.com/path",
+            "https://strandsagents.com@evil.com/path",
+            "http://strandsagents.com/valid-looking-path",
+        ],
+    )
+    def test_ssrf_bypass_vectors_rejected(self, malicious_uri):
+        result = browse_doc(uri=malicious_uri)
+
+        assert "error" in result

@@ -3,6 +3,7 @@
 import pytest
 
 from strands_mcp_server.utils.text_processor import (
+    extract_preamble,
     extract_section,
     make_section_summary,
     parse_sections,
@@ -187,3 +188,61 @@ class TestExtractSection:
         tru_result = extract_section(api_reference_doc, "2", sections)
 
         assert tru_result["content"].startswith("## AfterToolCallEvent")
+
+
+class TestExtractPreamble:
+    """Tests for extract_preamble()."""
+
+    def test_extracts_content_between_h1_and_first_h2(self, api_reference_doc):
+        tru_preamble = extract_preamble(api_reference_doc)
+
+        assert "Experimental hook events" in tru_preamble
+        assert "# strands.hooks.events" not in tru_preamble  # H1 stripped
+
+    def test_strips_h1_heading_line(self):
+        content = "# Title\n\nIntro paragraph.\n\n## Section\n\nBody.\n"
+        tru_preamble = extract_preamble(content)
+
+        assert tru_preamble == "Intro paragraph."
+        assert "# Title" not in tru_preamble
+
+    def test_empty_preamble_when_h2_follows_h1_immediately(self):
+        content = "# Title\n\n## Section\n\nBody.\n"
+        tru_preamble = extract_preamble(content)
+
+        exp_preamble = ""
+        assert tru_preamble == exp_preamble
+
+    def test_empty_content_returns_empty(self):
+        tru_preamble = extract_preamble("")
+
+        exp_preamble = ""
+        assert tru_preamble == exp_preamble
+
+    def test_no_h2_headers_returns_content_after_h1(self):
+        content = "# Title\n\nJust content, no sections.\n"
+        tru_preamble = extract_preamble(content)
+
+        assert tru_preamble == "Just content, no sections."
+
+    def test_ignores_h2_inside_code_block(self):
+        content = (
+            "# Title\n\n"
+            "Intro text.\n\n"
+            "```python\n"
+            "## This is not a real header\n"
+            "```\n\n"
+            "More intro.\n\n"
+            "## Real Section\n\n"
+            "Body.\n"
+        )
+        tru_preamble = extract_preamble(content)
+
+        assert "Intro text" in tru_preamble
+        assert "More intro" in tru_preamble
+
+    def test_no_h1_returns_content_before_first_h2(self):
+        content = "Some intro without title.\n\n## Section\n\nBody.\n"
+        tru_preamble = extract_preamble(content)
+
+        assert "Some intro without title" in tru_preamble

@@ -1,10 +1,22 @@
 from typing import Any, Dict, List
+from urllib.parse import urlparse
 
 from mcp.server.fastmcp import FastMCP
 
 from .utils import cache, text_processor
 
 APP_NAME = "strands-agents-mcp-server"
+
+
+def _is_valid_doc_url(uri: str) -> bool:
+    """Validate that a URI points to strandsagents.com over HTTPS."""
+    try:
+        parsed = urlparse(uri)
+        return parsed.scheme == "https" and parsed.hostname == "strandsagents.com"
+    except Exception:
+        return False
+
+
 mcp = FastMCP(APP_NAME)
 
 
@@ -74,69 +86,14 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def fetch_doc(uri: str = "") -> Dict[str, Any]:
-    """Fetch the entire content of a documentation page as a single block of text.
-
-    Returns the complete, unabridged document. This can be very large (some pages
-    exceed 100KB). Prefer browse_doc for targeted reading - it lets you inspect the
-    table of contents first, then fetch only the section you need.
-
-    Use fetch_doc only when you genuinely need the full document, for example to
-    summarize an entire page end-to-end, or to search across all sections at once.
-
-    Recommended workflow:
-    1. search_docs("your query") - find relevant URLs
-    2. browse_doc(uri="...") - see structure and section summaries
-    3. browse_doc(uri="...", section="3") - read just the section you need
-    4. fetch_doc(uri="...") - only if you need the entire document
-
-    Args:
-        uri: Document URL (must be https://strandsagents.com).
-            If empty, returns a catalog of all available document URLs with titles.
-
-    Returns:
-        Dictionary containing:
-        - url: Canonical document URL
-        - title: Document title
-        - content: Full document text content
-        - error: Error message (if fetch failed)
-
-        Or when uri is empty:
-        - urls: List of all available document URLs with titles
-
-    """
-    cache.ensure_ready()
-
-    # If no URI provided, return all available URLs (llms.txt catalog)
-    if not uri:
-        url_titles = cache.get_url_titles()
-        return {"urls": [{"url": url, "title": title} for url, title in url_titles.items()]}
-    # Only accept https://strandsagents.com URLs
-    if not uri.startswith("https://strandsagents.com"):
-        return {"error": "only https://strandsagents.com URLs allowed", "url": uri}
-
-    url = uri
-
-    page = cache.ensure_page(url)
-    if page is None:
-        return {"error": "fetch failed", "url": url}
-
-    return {
-        "url": url,
-        "title": page.title,
-        "content": page.content,
-    }
-
-
-@mcp.tool()
 def browse_doc(uri: str, section: str = "") -> Dict[str, Any]:
-    """Read a documentation page section by section. This is the preferred tool for
-    reading documentation - use it before reaching for fetch_doc.
+    """Read documentation pages with smart sectioning for token efficiency.
 
     Two modes of operation:
 
     1. **TOC mode** (omit section): Returns a table of contents with section IDs,
-       titles, and short summaries so you can decide which part to read.
+       titles, summaries, and the document's preamble so you can decide which part
+       to read.
     2. **Section mode** (provide section): Returns the full markdown content of
        one section, identified by the ID from the TOC (e.g., "3" or "3.2").
 
@@ -145,9 +102,8 @@ def browse_doc(uri: str, section: str = "") -> Dict[str, Any]:
 
     Recommended workflow:
     1. search_docs("your query") - find relevant URLs
-    2. browse_doc(uri="...") - see structure and section summaries
+    2. browse_doc(uri="...") - see structure, preamble, and section summaries
     3. browse_doc(uri="...", section="3") - read the section you need
-    4. fetch_doc(uri="...") - only if you need the entire document at once
 
     Args:
         uri: Document URL (must be https://strandsagents.com).
@@ -158,6 +114,7 @@ def browse_doc(uri: str, section: str = "") -> Dict[str, Any]:
     Returns:
         When section is omitted (TOC mode):
         - url, title: Document metadata
+        - preamble: Introductory text between page title and first section
         - sections: List of sections with id, level, title, summary, children
 
         When section is provided:
@@ -182,7 +139,7 @@ def browse_doc(uri: str, section: str = "") -> Dict[str, Any]:
         url_titles = cache.get_url_titles()
         return {"urls": [{"url": url, "title": title} for url, title in url_titles.items()]}
 
-    if not uri.startswith("https://strandsagents.com"):
+    if not _is_valid_doc_url(uri):
         return {"error": "only https://strandsagents.com URLs allowed", "url": uri}
 
     page = cache.ensure_page(uri)
@@ -222,11 +179,12 @@ def browse_doc(uri: str, section: str = "") -> Dict[str, Any]:
             "content": result["content"],
         }
 
-    # TOC mode: return section tree (strip internal fields)
+    # TOC mode: return section tree with preamble (strip internal fields)
     clean_sections = [{k: v for k, v in s.items() if not k.startswith("_")} for s in sections]
     return {
         "url": uri,
         "title": page.title,
+        "preamble": text_processor.extract_preamble(page.content),
         "sections": clean_sections,
     }
 

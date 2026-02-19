@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from strands_mcp_server.server import browse_doc
 from strands_mcp_server.utils.doc_fetcher import Page
 
@@ -49,6 +51,18 @@ class TestBrowseDocTocMode:
         assert tru_result["document_small"] is True
         assert "content" in tru_result
         assert "section_id" not in tru_result
+
+    def test_toc_includes_preamble(self, mock_cache, api_reference_doc):
+        mock_cache.ensure_page.return_value = Page(
+            url="https://strandsagents.com/test.md",
+            title="Test Doc",
+            content=api_reference_doc,
+        )
+
+        tru_result = browse_doc(uri="https://strandsagents.com/test.md")
+
+        assert "preamble" in tru_result
+        assert "Experimental hook events" in tru_result["preamble"]
 
     def test_no_h2_headers_returns_full_content(self, mock_cache, no_h2_doc):
         mock_cache.ensure_page.return_value = Page(
@@ -103,6 +117,22 @@ class TestBrowseDocErrors:
 
         exp_error = "only https://strandsagents.com URLs allowed"
         assert tru_result["error"] == exp_error
+
+    @pytest.mark.parametrize(
+        "malicious_uri",
+        [
+            "https://strandsagents.com.evil.com/path",
+            "https://strandsagents.com@evil.com/path",
+            "http://strandsagents.com/path",
+            "ftp://strandsagents.com/path",
+            "https://evil.com/hack",
+        ],
+    )
+    def test_ssrf_bypass_vectors_rejected(self, mock_cache, malicious_uri):
+        tru_result = browse_doc(uri=malicious_uri)
+
+        assert "error" in tru_result
+        assert "strandsagents.com" in tru_result["error"]
 
     def test_fetch_failure_returns_error(self, mock_cache):
         mock_cache.ensure_page.return_value = None
