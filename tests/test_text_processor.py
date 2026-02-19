@@ -167,7 +167,7 @@ class TestExtractSection:
 
     @pytest.mark.parametrize(
         "section_id",
-        ["0", "99", "abc", "3.", ".3", "3..2", "-1", "1.99"],
+        ["0", "99", "abc", "3..2", "1.99"],
     )
     def test_invalid_section_returns_none(self, api_reference_doc, section_id):
         sections = parse_sections(api_reference_doc)

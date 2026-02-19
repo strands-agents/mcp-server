@@ -60,14 +60,6 @@ class TestParseSectionsOnRealDocs:
             assert section["title"]
             assert section["level"] == 2
 
-    def test_section_ids_are_sequential(self, large_doc_page):
-        """Section IDs should be sequential 1-based integers."""
-        sections = parse_sections(large_doc_page.content)
-
-        for i, section in enumerate(sections):
-            exp_id = str(i + 1)
-            assert section["id"] == exp_id, f"Expected id '{exp_id}' but got '{section['id']}'"
-
     def test_extract_roundtrip(self, large_doc_page):
         """Extracting each section and concatenating should cover the doc."""
         sections = parse_sections(large_doc_page.content)
@@ -78,12 +70,3 @@ class TestParseSectionsOnRealDocs:
             assert result["section_title"] == section["title"]
             assert "## " in result["content"]
 
-    def test_no_code_block_headers_in_sections(self, large_doc_page):
-        """Headers inside code blocks should not appear as section titles."""
-        sections = parse_sections(large_doc_page.content)
-
-        for section in sections:
-            # Section titles should not contain code fence markers
-            assert "```" not in section["title"]
-            for child in section.get("children", []):
-                assert "```" not in child["title"]

@@ -13,7 +13,6 @@ if os.environ.get("SKIP_INTEG_TESTS"):
 # Known stable documentation URLs for regression testing.
 # These are core pages unlikely to be removed.
 LARGE_DOC_URL = "https://strandsagents.com/latest/documentation/docs/user-guide/concepts/agents/hooks/index.md"
-API_REF_URL = "https://strandsagents.com/latest/documentation/docs/api-reference/python/agent/agent/index.md"
 
 # Mark all tests in this directory as integration tests
 pytestmark = [
@@ -46,19 +45,6 @@ def large_doc_page(live_cache):
         pytest.skip(
             f"Doc at {LARGE_DOC_URL} is only {len(page.content.encode('utf-8'))} bytes (need >{SMALL_DOC_THRESHOLD})"
         )
-    return page
-
-
-@pytest.fixture(scope="session")
-def api_ref_page(live_cache):
-    """Fetch a known API reference page with class/method structure.
-
-    API reference pages have deep header hierarchies (## Class, ### method)
-    which exercise the children parsing logic.
-    """
-    page = live_cache.ensure_page(API_REF_URL)
-    if page is None:
-        pytest.skip(f"Could not fetch {API_REF_URL}")
     return page
 
 

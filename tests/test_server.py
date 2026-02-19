@@ -25,6 +25,11 @@ class TestBrowseDocTocMode:
         assert len(tru_result["sections"]) == 3
         assert tru_result["title"] == "Test Doc"
 
+        # Internal fields must not leak into tool responses
+        for section in tru_result["sections"]:
+            for key in section:
+                assert not key.startswith("_"), f"Internal field '{key}' leaked"
+
     def test_small_doc_returns_full_content(self, mock_cache, small_doc):
         mock_cache.ensure_page.return_value = Page(
             url="https://strandsagents.com/small.md",
