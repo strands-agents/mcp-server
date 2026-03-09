@@ -69,4 +69,3 @@ class TestParseSectionsOnRealDocs:
             assert result is not None, f"Failed to extract section {section['id']}"
             assert result["section_title"] == section["title"]
             assert "## " in result["content"]
-
