@@ -2,11 +2,12 @@ import html
 import re
 import urllib.request
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 from ..config import doc_config
 
-# Example: "[Quickstart](https://strandsagents.com/.../index.md)"
-_MD_LINK = re.compile(r"\[([^\]]+)\]\((https?://[^\)]+)\)")
+# Matches markdown links with absolute or relative URLs
+_MD_LINK = re.compile(r"\[([^\]]+)\]\((https?://[^\)]+|/[^\)]+)\)")
 _HTML_BLOCK = re.compile(r"(?is)<(script|style|noscript).*?>.*?</\1>")
 _TAG = re.compile(r"(?s)<[^>]+>")
 _TITLE_TAG = re.compile(r"(?is)<title[^>]*>(.*?)</title>")
@@ -49,6 +50,9 @@ def _get(url: str) -> str:
 def parse_llms_txt(url: str) -> list[tuple[str, str]]:
     """Parse an llms.txt file and extract document links.
 
+    Supports both absolute URLs and relative paths. Relative paths
+    are resolved against the base URL of the llms.txt file.
+
     Args:
         url: URL of the llms.txt file to parse
 
@@ -57,9 +61,17 @@ def parse_llms_txt(url: str) -> list[tuple[str, str]]:
 
     """
     txt = _get(url)
-    return [
-        (match.group(1).strip() or match.group(2).strip(), match.group(2).strip()) for match in _MD_LINK.finditer(txt)
-    ]
+    parsed = urlparse(url)
+    base = f"{parsed.scheme}://{parsed.netloc}"
+
+    results = []
+    for match in _MD_LINK.finditer(txt):
+        title = match.group(1).strip()
+        link = match.group(2).strip()
+        if link.startswith("/"):
+            link = base + link
+        results.append((title or link, link))
+    return results
 
 
 def _html_to_text(raw_html: str) -> str:
