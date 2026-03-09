@@ -7,7 +7,7 @@ from strands_mcp_server.server import fetch_doc
 from .conftest import LARGE_DOC_URL
 
 
-class TestBrowseDocTocModeLive:
+class TestFetchDocTocModeLive:
     """Test TOC mode against real documentation pages."""
 
     def test_large_doc_returns_sections(self, live_cache, large_doc_page):
@@ -30,7 +30,7 @@ class TestBrowseDocTocModeLive:
         assert result["preamble"], "Preamble should not be empty for this doc"
 
 
-class TestBrowseDocSectionModeLive:
+class TestFetchDocSectionModeLive:
     """Test section extraction against real documentation pages."""
 
     def test_extract_first_section(self, live_cache, large_doc_page):
@@ -44,7 +44,7 @@ class TestBrowseDocSectionModeLive:
         assert result["content"].startswith("## ")
 
 
-class TestBrowseDocEdgeCasesLive:
+class TestFetchDocEdgeCasesLive:
     """Test edge cases and error paths against the real network."""
 
     def test_empty_uri_returns_catalog(self, live_cache):

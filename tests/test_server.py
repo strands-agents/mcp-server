@@ -9,7 +9,7 @@ from strands_mcp_server.utils.doc_fetcher import Page
 
 
 @patch("strands_mcp_server.server.cache")
-class TestBrowseDocTocMode:
+class TestFetchDocTocMode:
     """Tests for fetch_doc TOC mode (no section param)."""
 
     def test_returns_toc_for_large_doc(self, mock_cache, api_reference_doc):
@@ -88,7 +88,7 @@ class TestBrowseDocTocMode:
 
 
 @patch("strands_mcp_server.server.cache")
-class TestBrowseDocSectionMode:
+class TestFetchDocSectionMode:
     """Tests for fetch_doc section mode."""
 
     def test_returns_section_content(self, mock_cache, api_reference_doc):
@@ -117,7 +117,7 @@ class TestBrowseDocSectionMode:
 
 
 @patch("strands_mcp_server.server.cache")
-class TestBrowseDocErrors:
+class TestFetchDocErrors:
     """Tests for fetch_doc error handling."""
 
     @pytest.mark.parametrize(
