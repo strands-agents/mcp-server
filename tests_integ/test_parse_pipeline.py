@@ -2,13 +2,16 @@
 
 import pytest
 
+from strands_mcp_server.config import doc_config
 from strands_mcp_server.utils import doc_fetcher
 from strands_mcp_server.utils.text_processor import (
     extract_section,
     parse_sections,
 )
 
-from .conftest import LARGE_DOC_URL
+from .conftest import LARGE_DOC_URL, integ_marks
+
+pytestmark = integ_marks
 
 
 class TestLlmsTxtParsing:
@@ -17,7 +20,7 @@ class TestLlmsTxtParsing:
     def test_llms_txt_returns_links(self):
         """The llms.txt file should return valid documentation links."""
         try:
-            links = doc_fetcher.parse_llms_txt("https://strandsagents.com/latest/llms.txt")
+            links = doc_fetcher.parse_llms_txt(doc_config.llm_texts_url[0])
         except Exception as exc:
             pytest.skip(f"Could not fetch llms.txt: {exc}")
 

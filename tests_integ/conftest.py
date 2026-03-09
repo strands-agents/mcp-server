@@ -5,19 +5,17 @@ import pytest
 from strands_mcp_server.utils import cache
 from strands_mcp_server.utils.text_processor import SMALL_DOC_THRESHOLD
 
-# Skip all integration tests when SKIP_INTEG_TESTS is set.
-# Useful for CI environments without network access.
-if os.environ.get("SKIP_INTEG_TESTS"):
-    pytest.skip("SKIP_INTEG_TESTS is set", allow_module_level=True)
-
 # Known stable documentation URLs for regression testing.
 # These are core pages unlikely to be removed.
-LARGE_DOC_URL = "https://strandsagents.com/latest/documentation/docs/user-guide/concepts/agents/hooks/index.md"
+LARGE_DOC_URL = "https://strandsagents.com/docs/user-guide/concepts/agents/hooks/index.md"
 
-# Mark all tests in this directory as integration tests
-pytestmark = [
+integ_marks = [
     pytest.mark.integ,
     pytest.mark.timeout(60),
+    pytest.mark.skipif(
+        "SKIP_INTEG_TESTS" in os.environ,
+        reason="SKIP_INTEG_TESTS is set",
+    ),
 ]
 
 

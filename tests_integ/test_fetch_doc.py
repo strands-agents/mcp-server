@@ -4,7 +4,9 @@ import pytest
 
 from strands_mcp_server.server import fetch_doc
 
-from .conftest import LARGE_DOC_URL
+from .conftest import LARGE_DOC_URL, integ_marks
+
+pytestmark = integ_marks
 
 
 class TestFetchDocTocModeLive:
