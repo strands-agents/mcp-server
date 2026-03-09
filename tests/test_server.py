@@ -1,16 +1,16 @@
-"""Tests for browse_doc MCP tool."""
+"""Tests for fetch_doc MCP tool."""
 
 from unittest.mock import patch
 
 import pytest
 
-from strands_mcp_server.server import browse_doc
+from strands_mcp_server.server import fetch_doc
 from strands_mcp_server.utils.doc_fetcher import Page
 
 
 @patch("strands_mcp_server.server.cache")
 class TestBrowseDocTocMode:
-    """Tests for browse_doc TOC mode (no section param)."""
+    """Tests for fetch_doc TOC mode (no section param)."""
 
     def test_returns_toc_for_large_doc(self, mock_cache, api_reference_doc):
         mock_cache.ensure_page.return_value = Page(
@@ -19,7 +19,7 @@ class TestBrowseDocTocMode:
             content=api_reference_doc,
         )
 
-        tru_result = browse_doc(uri="https://strandsagents.com/test.md")
+        tru_result = fetch_doc(uri="https://strandsagents.com/test.md")
 
         assert "sections" in tru_result
         assert len(tru_result["sections"]) == 3
@@ -37,7 +37,7 @@ class TestBrowseDocTocMode:
             content=small_doc,
         )
 
-        tru_result = browse_doc(uri="https://strandsagents.com/small.md")
+        tru_result = fetch_doc(uri="https://strandsagents.com/small.md")
 
         assert tru_result["document_small"] is True
         assert tru_result["reason"] == "size"
@@ -51,7 +51,7 @@ class TestBrowseDocTocMode:
             content=small_doc,
         )
 
-        tru_result = browse_doc(uri="https://strandsagents.com/small.md", section="1")
+        tru_result = fetch_doc(uri="https://strandsagents.com/small.md", section="1")
 
         # Section param should be ignored for small docs
         assert tru_result["document_small"] is True
@@ -66,7 +66,7 @@ class TestBrowseDocTocMode:
             content=api_reference_doc,
         )
 
-        tru_result = browse_doc(uri="https://strandsagents.com/test.md")
+        tru_result = fetch_doc(uri="https://strandsagents.com/test.md")
 
         assert "preamble" in tru_result
         assert "Experimental hook events" in tru_result["preamble"]
@@ -78,7 +78,7 @@ class TestBrowseDocTocMode:
             content=no_h2_doc,
         )
 
-        tru_result = browse_doc(uri="https://strandsagents.com/no-h2.md")
+        tru_result = fetch_doc(uri="https://strandsagents.com/no-h2.md")
 
         # No ## sections means fallback to full content
         assert tru_result["document_small"] is True
@@ -89,7 +89,7 @@ class TestBrowseDocTocMode:
 
 @patch("strands_mcp_server.server.cache")
 class TestBrowseDocSectionMode:
-    """Tests for browse_doc section mode."""
+    """Tests for fetch_doc section mode."""
 
     def test_returns_section_content(self, mock_cache, api_reference_doc):
         mock_cache.ensure_page.return_value = Page(
@@ -98,7 +98,7 @@ class TestBrowseDocSectionMode:
             content=api_reference_doc,
         )
 
-        tru_result = browse_doc(uri="https://strandsagents.com/test.md", section="1")
+        tru_result = fetch_doc(uri="https://strandsagents.com/test.md", section="1")
 
         assert tru_result["section_id"] == "1"
         assert "content" in tru_result
@@ -111,14 +111,14 @@ class TestBrowseDocSectionMode:
             content=api_reference_doc,
         )
 
-        tru_result = browse_doc(uri="https://strandsagents.com/test.md", section="99")
+        tru_result = fetch_doc(uri="https://strandsagents.com/test.md", section="99")
 
         assert "error" in tru_result
 
 
 @patch("strands_mcp_server.server.cache")
 class TestBrowseDocErrors:
-    """Tests for browse_doc error handling."""
+    """Tests for fetch_doc error handling."""
 
     @pytest.mark.parametrize(
         "malicious_uri",
@@ -131,7 +131,7 @@ class TestBrowseDocErrors:
         ],
     )
     def test_ssrf_bypass_vectors_rejected(self, mock_cache, malicious_uri):
-        tru_result = browse_doc(uri=malicious_uri)
+        tru_result = fetch_doc(uri=malicious_uri)
 
         assert "error" in tru_result
         assert "strandsagents.com" in tru_result["error"]
@@ -139,14 +139,14 @@ class TestBrowseDocErrors:
     def test_fetch_failure_returns_error(self, mock_cache):
         mock_cache.ensure_page.return_value = None
 
-        tru_result = browse_doc(uri="https://strandsagents.com/missing.md")
+        tru_result = fetch_doc(uri="https://strandsagents.com/missing.md")
 
         assert tru_result["error"] == "fetch failed"
 
     def test_empty_uri_returns_url_catalog(self, mock_cache):
         mock_cache.get_url_titles.return_value = {"https://strandsagents.com/a.md": "Doc A"}
 
-        tru_result = browse_doc(uri="")
+        tru_result = fetch_doc(uri="")
 
         assert "urls" in tru_result
         assert len(tru_result["urls"]) == 1

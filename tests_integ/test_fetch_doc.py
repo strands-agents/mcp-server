@@ -1,8 +1,8 @@
-"""Integration tests for browse_doc MCP tool against live documentation."""
+"""Integration tests for fetch_doc MCP tool against live documentation."""
 
 import pytest
 
-from strands_mcp_server.server import browse_doc
+from strands_mcp_server.server import fetch_doc
 
 from .conftest import LARGE_DOC_URL
 
@@ -12,7 +12,7 @@ class TestBrowseDocTocModeLive:
 
     def test_large_doc_returns_sections(self, live_cache, large_doc_page):
         """Hooks user guide should produce a non-empty TOC with summaries."""
-        result = browse_doc(uri=LARGE_DOC_URL)
+        result = fetch_doc(uri=LARGE_DOC_URL)
 
         assert "sections" in result, f"Expected TOC but got: {list(result.keys())}"
         assert len(result["sections"]) >= 2, "Expected at least 2 ## sections"
@@ -35,7 +35,7 @@ class TestBrowseDocSectionModeLive:
 
     def test_extract_first_section(self, live_cache, large_doc_page):
         """Extracting section '1' should return content with the header."""
-        result = browse_doc(uri=LARGE_DOC_URL, section="1")
+        result = fetch_doc(uri=LARGE_DOC_URL, section="1")
 
         assert "content" in result
         assert "section_id" in result
@@ -49,7 +49,7 @@ class TestBrowseDocEdgeCasesLive:
 
     def test_empty_uri_returns_catalog(self, live_cache):
         """Empty URI should return the full URL catalog from llms.txt."""
-        result = browse_doc(uri="")
+        result = fetch_doc(uri="")
 
         assert "urls" in result
         assert len(result["urls"]) >= 10, "Expected at least 10 docs in the catalog"
@@ -60,6 +60,6 @@ class TestBrowseDocEdgeCasesLive:
 
     @pytest.mark.parametrize("malicious_uri", ["https://strandsagents.com.evil.com/path"])
     def test_ssrf_bypass_vectors_rejected(self, malicious_uri):
-        result = browse_doc(uri=malicious_uri)
+        result = fetch_doc(uri=malicious_uri)
 
         assert "error" in result

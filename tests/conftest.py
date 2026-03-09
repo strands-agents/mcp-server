@@ -5,7 +5,7 @@ import pytest
 def api_reference_doc():
     """Large API reference doc with multiple ## classes and ### methods.
 
-    IMPORTANT: Must exceed SMALL_DOC_THRESHOLD (8192 bytes) so browse_doc
+    IMPORTANT: Must exceed SMALL_DOC_THRESHOLD (8192 bytes) so fetch_doc
     takes the TOC path instead of the small-doc shortcut.
     """
     # Base structure with real section content
@@ -80,8 +80,8 @@ def headers_in_code_blocks_doc():
 def no_h2_doc():
     """Document with only # and ### headers, no ## sections.
 
-    Used by both parse_sections() unit tests and browse_doc server tests.
-    Padded above SMALL_DOC_THRESHOLD so browse_doc takes the TOC/fallback path.
+    Used by both parse_sections() unit tests and fetch_doc server tests.
+    Padded above SMALL_DOC_THRESHOLD so fetch_doc takes the TOC/fallback path.
     """
     return "# Title\n\n" + "Some content.\n\n" * 600 + "### Subsection\n\nMore content.\n"
 

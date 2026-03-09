@@ -86,7 +86,7 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def browse_doc(uri: str, section: str = "") -> Dict[str, Any]:
+def fetch_doc(uri: str, section: str = "") -> Dict[str, Any]:
     """Read documentation pages with smart sectioning for token efficiency.
 
     Two modes of operation:
@@ -102,8 +102,8 @@ def browse_doc(uri: str, section: str = "") -> Dict[str, Any]:
 
     Recommended workflow:
     1. search_docs("your query") - find relevant URLs
-    2. browse_doc(uri="...") - see structure, preamble, and section summaries
-    3. browse_doc(uri="...", section="3") - read the section you need
+    2. fetch_doc(uri="...") - see structure, preamble, and section summaries
+    3. fetch_doc(uri="...", section="3") - read the section you need
 
     Args:
         uri: Document URL (must be https://strandsagents.com).
