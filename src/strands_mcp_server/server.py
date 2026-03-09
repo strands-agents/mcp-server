@@ -86,7 +86,7 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def fetch_doc(uri: str, section: str = "") -> Dict[str, Any]:
+def fetch_doc(uri: str = "", section: str = "") -> Dict[str, Any]:
     """Read documentation pages with smart sectioning for token efficiency.
 
     Two modes of operation:
@@ -106,7 +106,7 @@ def fetch_doc(uri: str, section: str = "") -> Dict[str, Any]:
     3. fetch_doc(uri="...", section="3") - read the section you need
 
     Args:
-        uri: Document URL (must be https://strandsagents.com).
+        uri: Document URL (must be under https://strandsagents.com/).
             If empty, returns a catalog of all available document URLs with titles.
         section: Section ID from the TOC (e.g., "3" or "3.2").
             Omit to get the table of contents.

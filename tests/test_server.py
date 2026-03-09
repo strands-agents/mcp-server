@@ -86,6 +86,14 @@ class TestFetchDocTocMode:
         assert "content" in tru_result
         assert "sections" not in tru_result
 
+    @pytest.mark.parametrize("kwargs", [{}, {"uri": ""}], ids=["no-args", "empty-uri"])
+    def test_omitted_uri_returns_url_catalog(self, mock_cache, kwargs):
+        mock_cache.get_url_titles.return_value = {"https://strandsagents.com/a.md": "Doc A"}
+
+        tru_result = fetch_doc(**kwargs)
+
+        assert tru_result == {"urls": [{"url": "https://strandsagents.com/a.md", "title": "Doc A"}]}
+
 
 @patch("strands_mcp_server.server.cache")
 class TestFetchDocSectionMode:
@@ -103,17 +111,6 @@ class TestFetchDocSectionMode:
         assert tru_result["section_id"] == "1"
         assert "content" in tru_result
         assert "sections" not in tru_result
-
-    def test_invalid_section_returns_error(self, mock_cache, api_reference_doc):
-        mock_cache.ensure_page.return_value = Page(
-            url="https://strandsagents.com/test.md",
-            title="Test Doc",
-            content=api_reference_doc,
-        )
-
-        tru_result = fetch_doc(uri="https://strandsagents.com/test.md", section="99")
-
-        assert "error" in tru_result
 
 
 @patch("strands_mcp_server.server.cache")
@@ -136,17 +133,20 @@ class TestFetchDocErrors:
         assert "error" in tru_result
         assert "strandsagents.com" in tru_result["error"]
 
+    def test_invalid_section_returns_error(self, mock_cache, api_reference_doc):
+        mock_cache.ensure_page.return_value = Page(
+            url="https://strandsagents.com/test.md",
+            title="Test Doc",
+            content=api_reference_doc,
+        )
+
+        tru_result = fetch_doc(uri="https://strandsagents.com/test.md", section="99")
+
+        assert "error" in tru_result
+
     def test_fetch_failure_returns_error(self, mock_cache):
         mock_cache.ensure_page.return_value = None
 
         tru_result = fetch_doc(uri="https://strandsagents.com/missing.md")
 
         assert tru_result["error"] == "fetch failed"
-
-    def test_empty_uri_returns_url_catalog(self, mock_cache):
-        mock_cache.get_url_titles.return_value = {"https://strandsagents.com/a.md": "Doc A"}
-
-        tru_result = fetch_doc(uri="")
-
-        assert "urls" in tru_result
-        assert len(tru_result["urls"]) == 1
