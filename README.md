@@ -37,6 +37,7 @@ This MCP server provides curated documentation access to your GenAI tools via ll
 ## Features
 
 - **Smart Document Search**: TF-IDF based search with Markdown-aware scoring that prioritizes titles, headers, and code blocks
+- **Section-Based Browsing**: Browse document structure via table of contents, then fetch only the section you need - more token-efficient than retrieving full pages
 - **Curated Content**: Indexes documentation from llms.txt files with clean, human-readable titles
 - **On-Demand Fetching**: Lazy-loads full document content only when needed for optimal performance
 - **Snippet Generation**: Provides contextual snippets with relevance scoring for quick overview
@@ -206,8 +207,8 @@ The Inspector is also useful for troubleshooting MCP server issues as it provide
    ```
 
 4. **Start using the documentation tools**:
-   - Use `search_docs` to find relevant documentation with intelligent ranking
-   - Use `fetch_doc` to retrieve full content from specific URLs
+   - `search_docs` - Find relevant documentation with intelligent ranking
+   - `fetch_doc` - Browse a page's structure and preamble, then read individual sections
    - The server automatically indexes curated content from llms.txt files
 
 ## Server Development
@@ -217,9 +218,28 @@ git clone https://github.com/strands-agents/mcp-server.git
 cd mcp-server
 python3 -m venv venv
 source venv/bin/activate
-pip3 install -e .
+pip3 install -e ".[dev]"
 
 npx @modelcontextprotocol/inspector python -m strands_mcp_server
+```
+
+### Running Tests
+
+```bash
+# Unit tests (fast, no network access required)
+pytest tests/
+
+# Integration tests (requires network access to strandsagents.com)
+pytest tests_integ/ -v
+
+# All tests
+pytest tests/ tests_integ/ -v
+```
+
+To skip integration tests (e.g., in CI environments without network access):
+
+```bash
+SKIP_INTEG_TESTS=1 pytest tests_integ/
 ```
 
 ## Contributing ❤️

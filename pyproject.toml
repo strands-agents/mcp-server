@@ -51,6 +51,8 @@ dev = [
     "commitizen>=4.4.0",
     "hatch>=1.0.0",
     "pre-commit>=2.20.0",
+    "pytest>=9.0.0",
+    "pytest-timeout>=2.0.0",
     "ruff>=0.4.4",
 ]
 
@@ -88,10 +90,13 @@ format = [
 lint = [
     "hatch fmt --linter"
 ]
+test = ["pytest tests/ {args}"]
+test-integ = ["pytest tests_integ/ -v --timeout=60 {args}"]
+test-all = ["pytest tests/ tests_integ/ {args}"]
 
 [tool.ruff]
 line-length = 120
-include = ["src/**/*.py"]
+include = ["src/**/*.py", "tests/**/*.py", "tests_integ/**/*.py"]
 
 [tool.ruff.lint]
 select = [
@@ -109,3 +114,9 @@ version_files = [
     "pyproject.toml:version",
 ]
 update_changelog_on_bump = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integ: integration tests that hit the network",
+]
