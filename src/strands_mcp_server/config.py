@@ -9,6 +9,7 @@ class Config:
         llm_texts_url: List of llms.txt URLs to index for documentation
         timeout: HTTP request timeout in seconds
         user_agent: User agent string for HTTP requests
+        max_response_bytes: Maximum HTTP response size in bytes
     """
 
     llm_texts_url: list[str] = field(
@@ -16,6 +17,7 @@ class Config:
     )  # Curated list of llms.txt files to index at startup
     timeout: float = 30.0  # HTTP request timeout in seconds
     user_agent: str = "strands-mcp-docs/1.0"  # User agent for HTTP requests
+    max_response_bytes: int = 2 * 1024 * 1024  # Max HTTP response size (2 MB)
 
 
 # Global configuration instance
