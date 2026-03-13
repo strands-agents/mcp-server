@@ -3,6 +3,13 @@ from urllib.parse import urlparse
 
 from mcp.server.fastmcp import FastMCP
 
+from .prompts import (
+    generate_agent_prompt,
+    generate_model_prompt,
+    generate_multiagent_prompt,
+    generate_session_prompt,
+    generate_tool_prompt,
+)
 from .utils import cache, text_processor
 
 APP_NAME = "strands-agents-mcp-server"
@@ -83,6 +90,187 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
             }
         )
     return return_docs
+
+
+@mcp.prompt()
+def strands_tool_development(request: str, tool_use_examples: str = "", preferred_libraries: str = "") -> str:
+    """Generate a design-first prompt for developing Strands tools.
+
+    This prompt guides the development process through:
+    1. Understanding the user's requirements
+    2. Designing the tool interface first
+    3. Getting user approval on the design
+    4. Implementing the full tool code
+
+    The workflow ensures clear communication and agreement before implementation.
+
+    Args:
+        request: Description of the tool functionality needed
+        tool_use_examples: Examples of how the tool will be used (optional)
+        preferred_libraries: Specific libraries or APIs to use (optional)
+
+    Returns:
+        A structured prompt for design-first tool development
+    """
+    return generate_tool_prompt(request, tool_use_examples, preferred_libraries)
+
+
+@mcp.prompt()
+def strands_agent_development(
+    use_case: str, examples: str = "", agent_guidelines: str = "", tools_required: str = "", model_preferences: str = ""
+) -> str:
+    """Generate a design-first prompt for developing Strands agents with comprehensive guidelines.
+
+    This prompt guides agent development through:
+    1. Understanding the requirements
+    2. Designing the agent architecture first (system prompt, tools, model)
+    3. Getting user approval on the design
+    4. Implementing the full agent code
+
+    The workflow ensures proper agent design with:
+    - Effective system prompt development
+    - Strategic tool selection
+    - Appropriate model provider choice
+    - Session and state management planning
+
+    Args:
+        use_case: Description of what the agent should do (e.g., "research assistant for academic papers")
+        examples: Optional examples of expected agent behavior or interactions
+        agent_guidelines: Optional specific behavioral guidelines or constraints for the agent
+        tools_required: Optional list of specific tools or capabilities the agent must have
+        model_preferences: Optional preferences for model provider or specific models
+
+    Returns:
+        A structured prompt for design-first agent development
+    """
+    return generate_agent_prompt(
+        use_case=use_case,
+        examples=examples,
+        agent_guidelines=agent_guidelines,
+        tools_required=tools_required,
+        model_preferences=model_preferences,
+        include_examples=bool(examples),
+        verbosity="normal",
+    )
+
+
+@mcp.prompt()
+def strands_session_management(request: str, include_examples: bool = True) -> str:
+    """Generate a design-first prompt for implementing Strands session management.
+
+    This prompt guides the implementation of session management through:
+    1. Understanding the session requirements
+    2. Designing the session architecture first
+    3. Getting user approval on the design
+    4. Implementing the full session management code
+
+    Session management enables:
+    - Stateful conversations with memory
+    - Multi-turn interactions with context
+    - Persistent conversation history
+    - Session lifecycle management
+    - Custom storage backends
+
+    Args:
+        request: Description of the session management needs
+        include_examples: Include usage examples (default: True)
+
+    Returns:
+        A structured prompt for design-first session implementation
+    """
+    return generate_session_prompt(request, include_examples)
+
+
+@mcp.prompt()
+def strands_model_development(
+    use_case: str,
+    model_details: str = "",
+    api_documentation: str = "",
+    auth_requirements: str = "",
+    special_features: str = "",
+) -> str:
+    """Generate a design-first prompt for developing custom Strands model providers.
+
+    This prompt guides the development of custom model providers through:
+    1. Understanding the model integration requirements
+    2. Designing the provider architecture first (auth, API format, features)
+    3. Getting user approval on the design
+    4. Implementing the full model provider code
+
+    Custom model providers enable:
+    - Integration with proprietary LLM services
+    - Custom inference endpoints
+    - Specialized model configurations
+    - Organization-specific authentication
+    - Advanced features (streaming, function calling, embeddings)
+
+    Args:
+        use_case: Description of the model provider's purpose (e.g., "integrate our company's custom LLM API")
+        model_details: Optional details about the models to support (versions, capabilities, endpoints)
+        api_documentation: Optional reference to API documentation or endpoint specifications
+        auth_requirements: Optional authentication/authorization requirements (API keys, OAuth, custom)
+        special_features: Optional special capabilities needed (streaming, function calling, embeddings)
+
+    Returns:
+        A structured prompt for design-first model provider development
+    """
+    return generate_model_prompt(
+        use_case=use_case,
+        model_details=model_details,
+        api_documentation=api_documentation,
+        auth_requirements=auth_requirements,
+        special_features=special_features,
+        include_examples=True,
+    )
+
+
+@mcp.prompt()
+def strands_multiagent_development(
+    use_case: str,
+    pattern: str = "",
+    agent_roles: str = "",
+    interaction_requirements: str = "",
+    scale_requirements: str = "",
+) -> str:
+    """Generate a design-first prompt for developing multi-agent systems with Strands.
+
+    This prompt guides the development of multi-agent systems through:
+    1. Understanding why multi-agent is needed for the use case
+    2. Choosing between Graph (structured) vs Swarm (autonomous) patterns
+    3. Designing the agent architecture and interactions first
+    4. Getting user approval on the design
+    5. Implementing the full multi-agent system
+
+    Multi-agent systems enable:
+    - **Cognitive Load Distribution**: Break complex tasks into specialized sub-tasks
+    - **Parallel Processing**: Execute independent tasks simultaneously
+    - **Specialized Expertise**: Agents with different prompts, tools, and models
+    - **Fault Tolerance**: Isolated failure domains with graceful degradation
+    - **Emergent Intelligence**: Collective problem-solving beyond individual capabilities
+
+    Pattern Selection Guide:
+    - **Graph**: Use for structured workflows, ETL pipelines, approval chains
+    - **Swarm**: Use for creative problem-solving, research, collaborative analysis
+    - **Hybrid**: Combine Graph structure with Swarm nodes for complex sub-tasks
+
+    Args:
+        use_case: Description of what the multi-agent system should accomplish
+        pattern: Preferred pattern - "graph", "swarm", or "hybrid" (optional, will guide selection if not specified)
+        agent_roles: Description of the different agent roles and specializations needed (optional)
+        interaction_requirements: How agents should interact and collaborate (optional)
+        scale_requirements: Performance, reliability, and scalability requirements (optional)
+
+    Returns:
+        A structured prompt for design-first multi-agent system development
+    """
+    return generate_multiagent_prompt(
+        use_case=use_case,
+        pattern=pattern,
+        agent_roles=agent_roles,
+        interaction_requirements=interaction_requirements,
+        scale_requirements=scale_requirements,
+        include_examples=True,
+    )
 
 
 @mcp.tool()

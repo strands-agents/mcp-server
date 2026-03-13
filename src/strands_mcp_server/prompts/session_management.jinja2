@@ -1,0 +1,69 @@
+# Strands Session Management - Context Documentation
+
+## Task Description
+
+Implement session management for a Strands application with the following requirements:
+
+**Session Management Request:**
+{{ request }}
+
+{% if include_examples %}
+**Include Examples:** Yes - Show practical usage examples
+{% endif %}
+
+---
+
+## Strands Framework Overview
+
+{{ llms_txt_content | default("Strands is a powerful agent framework that enables AI agents to use tools, interact with systems, and accomplish complex tasks autonomously.", true) }}
+
+---
+
+## Session Management Documentation
+
+{% if session_management_content %}
+{% set filtered_content = session_management_content | regex_replace('````.*?````', '') %}
+{{ filtered_content }}
+{% else %}
+### Basic Session Patterns
+
+Sessions in Strands provide stateful conversation management:
+
+```python
+from strands import Agent
+from strands.session import Session, FileSessionStore
+
+# Create a session store
+store = FileSessionStore(base_path="./sessions")
+
+# Create or retrieve a session
+session = Session(session_id="user-123", store=store)
+
+# Use session with agent
+agent = Agent(session=session, system_prompt="You are a helpful assistant")
+```
+
+### Session Types
+
+1. **Memory Session** - Temporary, in-memory storage
+2. **File Session** - Persistent file-based storage
+3. **Custom Session** - Implement your own storage backend
+{% endif %}
+
+---
+
+## Session API Reference
+
+{% if session_api_content %}
+{% set filtered_api = session_api_content | regex_replace('````.*?````', '') %}
+{{ filtered_api }}
+{% endif %}
+
+---
+
+## Implementation Notes
+
+- Choose the appropriate storage backend for your use case
+- Consider session lifecycle management (creation, updates, cleanup)
+- Implement proper error handling for storage operations
+- Plan for concurrent access if needed

@@ -1,0 +1,90 @@
+# Strands Agent Development - Context Documentation
+
+## Task Description
+
+Develop a Strands AI agent with the following requirements:
+
+**Use Case:**
+{{ use_case }}
+
+{% if examples %}
+**Examples of Expected Behavior:**
+{{ examples }}
+{% endif %}
+
+{% if agent_guidelines %}
+**Agent Guidelines:**
+{{ agent_guidelines }}
+{% endif %}
+
+{% if tools_required %}
+**Required Tools/Capabilities:**
+{{ tools_required }}
+{% endif %}
+
+{% if model_preferences %}
+**Model Preferences:**
+{{ model_preferences }}
+{% endif %}
+
+---
+
+## Strands Framework Overview
+
+{{ llms_txt_content | default("Strands is a powerful agent framework that enables AI agents to use tools, interact with systems, and accomplish complex tasks autonomously.", true) }}
+
+---
+
+## Agent Loop Documentation
+
+{% if agent_loop_content %}
+{% set filtered_content = agent_loop_content | regex_replace('````.*?````', '') %}
+{{ filtered_content }}
+{% else %}
+### Agent Loop Overview
+
+The agent loop is the core execution model:
+
+1. **Receives user input** and contextual information
+2. **Processes the input** using a language model (LLM)
+3. **Decides** whether to use tools to gather information or perform actions
+4. **Executes tools** and receives results
+5. **Continues reasoning** with the new information
+6. **Produces a final response** or iterates again through the loop
+{% endif %}
+
+---
+
+## Agent API Reference
+
+{% if agent_api_content %}
+{% set filtered_api = agent_api_content | regex_replace('````.*?````', '') %}
+{{ filtered_api }}
+{% endif %}
+
+---
+
+## Available Tools
+
+{% if community_tools_content %}
+{{ community_tools_content }}
+{% else %}
+**Core Tools:**
+- `retrieve` - Semantic retrieval from knowledge bases
+- `memory` - Agent memory persistence
+- `http_request` - API calls and web data fetching
+- `file_read` / `file_write` / `editor` - File operations
+- `calculator` / `python_repl` - Computation
+- `shell` - System command execution
+- `use_llm` - Nested agent calls
+- `swarm` / `agent_graph` / `workflow` - Multi-agent coordination
+{% endif %}
+
+---
+
+## Implementation Notes
+
+- Design the system prompt to define agent role, expertise, and constraints
+- Select only necessary tools to keep the agent focused
+- Consider session management for stateful conversations
+- Use appropriate model provider for the use case

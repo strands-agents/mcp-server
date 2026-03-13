@@ -1,0 +1,114 @@
+# Strands Multi-Agent Systems Development - Context Documentation
+
+## Task Description
+
+Develop a multi-agent system with the following requirements:
+
+**Use Case:**
+{{ use_case }}
+
+{% if pattern %}
+**Preferred Pattern:** {{ pattern | upper }}
+{% if pattern | lower == "graph" %}
+Focus on structured workflows, explicit routing, and dependency management.
+{% elif pattern | lower == "swarm" %}
+Focus on autonomous collaboration, dynamic handoffs, and emergent behavior.
+{% elif pattern | lower == "hybrid" %}
+Combine Graph structure with Swarm nodes for complex sub-tasks.
+{% endif %}
+{% endif %}
+
+{% if agent_roles %}
+**Agent Roles and Specializations:**
+{{ agent_roles }}
+{% endif %}
+
+{% if interaction_requirements %}
+**Interaction Requirements:**
+{{ interaction_requirements }}
+{% endif %}
+
+{% if scale_requirements %}
+**Scale and Performance Requirements:**
+{{ scale_requirements }}
+{% endif %}
+
+---
+
+## Pattern Selection Guide
+
+**Use GRAPH when you need:**
+- Structured, predictable workflows
+- Explicit control over agent interactions
+- Complex routing logic and conditions
+- Parallel execution with dependencies
+
+**Use SWARM when you need:**
+- Autonomous agent collaboration
+- Dynamic task delegation
+- Self-organizing behavior
+- Flexible problem-solving
+
+---
+
+## Graph Pattern Documentation
+
+{% if graph_content %}
+{% set filtered_graph_step1 = graph_content | regex_replace('`````.*?`````', '') %}
+{% set filtered_graph = filtered_graph_step1 | regex_replace('````.*?````', '') %}
+{{ filtered_graph }}
+{% endif %}
+
+---
+
+## Swarm Pattern Documentation
+
+{% if swarm_content %}
+{% set filtered_swarm_step1 = swarm_content | regex_replace('`````.*?`````', '') %}
+{% set filtered_swarm = filtered_swarm_step1 | regex_replace('````.*?````', '') %}
+{{ filtered_swarm }}
+{% endif %}
+
+---
+
+## Multi-Agent API Reference
+
+{% if multiagent_api_content %}
+{% set filtered_api_step1 = multiagent_api_content | regex_replace('`````.*?`````', '') %}
+{% set filtered_api = filtered_api_step1 | regex_replace('````.*?````', '') %}
+{{ filtered_api }}
+{% endif %}
+
+---
+
+## Implementation Notes
+
+- Design agents with focused expertise and clear responsibilities
+- Select appropriate tools for each agent's role
+- Plan communication patterns and handoff conditions
+- Consider error handling and fault tolerance
+- Implement monitoring for observability
+{% if include_examples %}
+
+## Example Patterns
+
+**Graph Pattern:**
+```python
+from strands.multiagent.graph import Graph, Node, Edge
+
+graph = Graph(name="workflow")
+graph.add_node(Node(name="step1", agent=agent1))
+graph.add_node(Node(name="step2", agent=agent2))
+graph.add_edge(Edge(source="step1", target="step2"))
+```
+
+**Swarm Pattern:**
+```python
+from strands.multiagent.swarm import Swarm
+
+swarm = Swarm(name="team")
+swarm.add_agent("expert1", agent1)
+swarm.add_agent("expert2", agent2)
+result = await swarm.execute("task description")
+```
+{% endif %}
