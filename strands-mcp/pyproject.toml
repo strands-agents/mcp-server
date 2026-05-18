@@ -38,8 +38,10 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.version]
-# Tells Hatch to use your version control system (git) to determine the version.
 source = "vcs"
+raw-options.root = ".."
+raw-options.tag_regex = "^mcp/v(?P<version>.+)$"
+raw-options.git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "mcp/v*"]
 
 [project.urls]
 Homepage = "https://github.com/strands-agents/mcp-server"
@@ -79,6 +81,9 @@ lint-check = [
 lint-fix = [
     "ruff check --fix"
 ]
+
+[tool.hatch.envs.default]
+features = ["dev"]
 
 [tool.hatch.envs.default.scripts]
 list = [
