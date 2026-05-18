@@ -1,9 +1,46 @@
 import html
+import http.client
 import re
+import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
 from ..config import doc_config
+
+
+def _validate_fetch_url(url: str) -> None:
+    """Reject URLs that fail protocol-level safety checks."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https":
+        raise urllib.error.URLError("only https URLs are allowed")
+    if "@" in (parsed.netloc or ""):
+        raise urllib.error.URLError("URLs with userinfo (@) are not allowed")
+    if not parsed.hostname:
+        raise urllib.error.URLError("URL has no hostname")
+
+
+class _SameHostRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Allow redirects only within the same scheme+host. Block cross-host redirects to prevent SSRF."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: http.client.HTTPResponse,
+        code: int,
+        msg: str,
+        headers: http.client.HTTPMessage,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        _validate_fetch_url(newurl)
+        original = urllib.parse.urlparse(req.full_url)
+        target = urllib.parse.urlparse(newurl)
+        if target.hostname != original.hostname:
+            raise urllib.error.URLError(f"cross-host redirect blocked ({code})")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_opener = urllib.request.build_opener(_SameHostRedirectHandler)
 
 # Example: "[Quickstart](https://strandsagents.com/.../index.md)"
 _MD_LINK = re.compile(r"\[([^\]]+)\]\((https?://[^\)]+)\)")
@@ -39,11 +76,16 @@ def _get(url: str) -> str:
         The decoded text content of the response
 
     Raises:
-        urllib.error.URLError: If the request fails
+        urllib.error.URLError: If the URL fails validation, the request fails, or a cross-host redirect is attempted
+        RuntimeError: If the response exceeds max_response_bytes
     """
+    _validate_fetch_url(url)
     req = urllib.request.Request(url, headers={"User-Agent": doc_config.user_agent})
-    with urllib.request.urlopen(req, timeout=doc_config.timeout) as r:
-        return r.read().decode("utf-8", errors="ignore")
+    with _opener.open(req, timeout=doc_config.timeout) as r:
+        data = r.read(doc_config.max_response_bytes + 1)
+        if len(data) > doc_config.max_response_bytes:
+            raise RuntimeError(f"response exceeds {doc_config.max_response_bytes} bytes")
+        return data.decode("utf-8", errors="ignore")
 
 
 def parse_llms_txt(url: str) -> list[tuple[str, str]]:
