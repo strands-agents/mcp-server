@@ -1,4 +1,4 @@
-name: Lint
+name: "MCP: Lint"
 
 on:
   workflow_call:
@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    defaults:
+      run:
+        working-directory: strands-mcp
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

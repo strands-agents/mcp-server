@@ -1,18 +1,24 @@
-name: Pull Request and Push Action
+name: "MCP: Pull Request and Push"
 
 on:
-  pull_request:  # Safer than pull_request_target for untrusted code
+  pull_request:
     branches: [ main ]
     types: [opened, synchronize, reopened, ready_for_review, review_requested, review_request_removed]
+    paths:
+      - 'strands-mcp/**'
+      - '.github/workflows/mcp-*'
   push:
-    branches: [ main ]  # Also run on direct pushes to main
+    branches: [ main ]
+    paths:
+      - 'strands-mcp/**'
+      - '.github/workflows/mcp-*'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   call-test-lint:
-    uses: ./.github/workflows/test-lint.yml
+    uses: ./.github/workflows/mcp-test-lint.yml
     permissions:
       contents: read
     with:

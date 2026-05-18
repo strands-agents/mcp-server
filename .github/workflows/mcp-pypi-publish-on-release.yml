@@ -1,4 +1,4 @@
-name: Publish Python Package
+name: "MCP: Publish Python Package"
 
 on:
   release:
@@ -7,24 +7,30 @@ on:
 
 jobs:
   call-test-lint:
-    uses: ./.github/workflows/test-lint.yml
+    if: startsWith(github.event.release.tag_name, 'mcp/v')
+    uses: ./.github/workflows/mcp-test-lint.yml
     permissions:
       contents: read
     with:
       ref: ${{ github.event.release.target_commitish }}
 
   build:
-    name: Build distribution 📦
+    name: Build distribution
+    if: startsWith(github.event.release.tag_name, 'mcp/v')
     permissions:
       contents: read
     needs:
       - call-test-lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: strands-mcp
 
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -52,7 +58,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-package-distributions
-          path: dist/
+          path: strands-mcp/dist/
 
   deploy:
     name: Upload release to PyPI
@@ -60,13 +66,10 @@ jobs:
       - build
     runs-on: ubuntu-latest
 
-    # environment is used by PyPI Trusted Publisher and is strongly encouraged
-    # https://docs.pypi.org/trusted-publishers/adding-a-publisher/
     environment:
       name: pypi
       url: https://pypi.org/p/strands-agents-mcp-server
     permissions:
-      # IMPORTANT: this permission is mandatory for Trusted Publishing
       id-token: write
 
     steps:
@@ -75,5 +78,5 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
-      - name: Publish distribution 📦 to PyPI
+      - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

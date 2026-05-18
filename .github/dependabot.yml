@@ -1,12 +1,12 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/strands-mcp"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 100
     commit-message:
-      prefix: ci
+      prefix: "ci(mcp)"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
