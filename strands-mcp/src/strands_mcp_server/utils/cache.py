@@ -1,15 +1,21 @@
+import logging
+import time
 from typing import Dict
 
 from ..config import doc_config
 from . import doc_fetcher, indexer, text_processor
+
+logger = logging.getLogger(__name__)
 
 # Global state
 _INDEX: indexer.IndexSearch | None = None
 _URL_CACHE: Dict[str, doc_fetcher.Page | None] = {}  # url -> Page (None if not fetched yet)
 _URL_TITLES: Dict[str, str] = {}  # url -> curated title from llms.txt
 _LINKS_LOADED = False
+_FAILED_FETCHES: Dict[str, float] = {}  # url -> timestamp of last failed attempt
 
 SNIPPET_HYDRATE_MAX = 5  # how many top results to hydrate with content
+NEGATIVE_CACHE_TTL = 300  # seconds to wait before retrying a failed URL
 
 
 def load_links_only() -> None:
@@ -64,17 +70,29 @@ def ensure_page(url: str) -> doc_fetcher.Page | None:
     Returns:
         The cached or newly fetched Page object, or None if fetch failed
 
+    Negative caching: failed URLs are remembered for ``NEGATIVE_CACHE_TTL``
+    seconds so that repeated calls in the same session don't waste time on
+    serial timeouts.
+
     """
     page = _URL_CACHE.get(url)
     if page is not None:
         return page
+
+    # Negative cache hit — skip the fetch if the last failure is recent
+    last_fail = _FAILED_FETCHES.get(url)
+    if last_fail is not None and time.monotonic() - last_fail < NEGATIVE_CACHE_TTL:
+        return None
+
     try:
         raw = doc_fetcher.fetch_and_clean(url)
         display_title = text_processor.format_display_title(url, raw.title, _URL_TITLES)
         page = doc_fetcher.Page(url=url, title=display_title, content=raw.content)
         _URL_CACHE[url] = page
         return page
-    except Exception:
+    except Exception as exc:
+        _FAILED_FETCHES[url] = time.monotonic()
+        logger.warning("Failed to fetch %s: %s", url, exc)
         return None
 
 
