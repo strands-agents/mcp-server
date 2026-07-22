@@ -158,14 +158,23 @@ def fetch_doc(uri: str = "", section: str = "") -> Dict[str, Any]:
 
     sections = text_processor.parse_sections(page.content)
 
-    # No parseable sections: treat as small doc regardless of size
+    # No parseable sections: cap at SMALL_DOC_THRESHOLD to avoid
+    # dumping arbitrarily large documents into the model context.
     if not sections:
+        content = page.content
+        truncated = False
+        content_bytes = content.encode("utf-8")
+        if len(content_bytes) > text_processor.SMALL_DOC_THRESHOLD:
+            # Truncate at byte boundary, safely handling multi-byte chars
+            content = content_bytes[:text_processor.SMALL_DOC_THRESHOLD].decode("utf-8", errors="ignore")
+            truncated = True
         return {
             "url": uri,
             "title": page.title,
             "document_small": True,
             "reason": "no_sections",
-            "content": page.content,
+            "content": content,
+            **({"truncated": True} if truncated else {}),
         }
 
     # Section mode: extract specific section

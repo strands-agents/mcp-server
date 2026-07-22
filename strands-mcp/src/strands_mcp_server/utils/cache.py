@@ -1,3 +1,5 @@
+import logging
+import time
 from typing import Dict
 
 from ..config import doc_config
@@ -8,8 +10,12 @@ _INDEX: indexer.IndexSearch | None = None
 _URL_CACHE: Dict[str, doc_fetcher.Page | None] = {}  # url -> Page (None if not fetched yet)
 _URL_TITLES: Dict[str, str] = {}  # url -> curated title from llms.txt
 _LINKS_LOADED = False
+_FAILURE_CACHE: Dict[str, float] = {}  # url -> monotonic timestamp of last failure
+_FAILURE_TTL: float = 300.0  # seconds — retry a failed URL after this long
 
 SNIPPET_HYDRATE_MAX = 5  # how many top results to hydrate with content
+
+logger = logging.getLogger(__name__)
 
 
 def load_links_only() -> None:
@@ -58,6 +64,9 @@ def ensure_ready() -> None:
 def ensure_page(url: str) -> doc_fetcher.Page | None:
     """Ensure a page is cached, fetching it if necessary.
 
+    Failed fetches are negatively cached for ``_FAILURE_TTL`` seconds
+    to avoid repeated timeouts on the same broken URL.
+
     Args:
         url: The URL of the page to ensure is cached
 
@@ -65,6 +74,15 @@ def ensure_page(url: str) -> doc_fetcher.Page | None:
         The cached or newly fetched Page object, or None if fetch failed
 
     """
+    # Negative cache check — skip recently-failed URLs
+    failure_time = _FAILURE_CACHE.get(url)
+    if failure_time is not None:
+        if time.monotonic() - failure_time < _FAILURE_TTL:
+            logger.debug("Skipping recently-failed URL: %s (%.0fs ago)", url, time.monotonic() - failure_time)
+            return None
+        # TTL expired — retry
+        del _FAILURE_CACHE[url]
+
     page = _URL_CACHE.get(url)
     if page is not None:
         return page
@@ -74,7 +92,9 @@ def ensure_page(url: str) -> doc_fetcher.Page | None:
         page = doc_fetcher.Page(url=url, title=display_title, content=raw.content)
         _URL_CACHE[url] = page
         return page
-    except Exception:
+    except Exception as exc:
+        _FAILURE_CACHE[url] = time.monotonic()
+        logger.warning("Failed to fetch %s: %s: %s", url, type(exc).__name__, exc)
         return None
 
 
