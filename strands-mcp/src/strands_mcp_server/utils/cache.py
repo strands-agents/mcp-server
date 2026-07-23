@@ -1,11 +1,17 @@
-from typing import Dict
+import logging
+from typing import Any, Dict
 
 from ..config import doc_config
 from . import doc_fetcher, indexer, text_processor
 
+logger = logging.getLogger(__name__)
+
+# Sentinel for negatively cached (failed) fetches — distinct from None (not fetched)
+_FAILED = object()
+
 # Global state
 _INDEX: indexer.IndexSearch | None = None
-_URL_CACHE: Dict[str, doc_fetcher.Page | None] = {}  # url -> Page (None if not fetched yet)
+_URL_CACHE: Dict[str, Any] = {}  # url -> Page, None (not fetched), or _FAILED (failed)
 _URL_TITLES: Dict[str, str] = {}  # url -> curated title from llms.txt
 _LINKS_LOADED = False
 
@@ -65,9 +71,12 @@ def ensure_page(url: str) -> doc_fetcher.Page | None:
         The cached or newly fetched Page object, or None if fetch failed
 
     """
-    page = _URL_CACHE.get(url)
-    if page is not None:
-        return page
+    cached = _URL_CACHE.get(url)
+    # Short-circuit on known failures — don't re-fetch
+    if cached is _FAILED:
+        return None
+    if cached is not None:
+        return cached
     try:
         raw = doc_fetcher.fetch_and_clean(url)
         display_title = text_processor.format_display_title(url, raw.title, _URL_TITLES)
@@ -75,6 +84,8 @@ def ensure_page(url: str) -> doc_fetcher.Page | None:
         _URL_CACHE[url] = page
         return page
     except Exception:
+        logger.exception("Failed to fetch page: %s", url)
+        _URL_CACHE[url] = _FAILED  # negatively cache the failure
         return None
 
 
@@ -87,7 +98,7 @@ def get_index() -> indexer.IndexSearch | None:
     return _INDEX
 
 
-def get_url_cache() -> Dict[str, doc_fetcher.Page | None]:
+def get_url_cache() -> Dict[str, Any]:
     """Get the URL cache dictionary.
 
     Returns:

@@ -71,7 +71,7 @@ class TestFetchDocTocMode:
         assert "preamble" in tru_result
         assert "Experimental hook events" in tru_result["preamble"]
 
-    def test_no_h2_headers_returns_full_content(self, mock_cache, no_h2_doc):
+    def test_no_h2_headers_returns_bounded_content(self, mock_cache, no_h2_doc):
         mock_cache.ensure_page.return_value = Page(
             url="https://strandsagents.com/no-h2.md",
             title="No H2 Doc",
@@ -80,10 +80,12 @@ class TestFetchDocTocMode:
 
         tru_result = fetch_doc(uri="https://strandsagents.com/no-h2.md")
 
-        # No ## sections means fallback to full content
+        # No ## sections means fallback to bounded content — capped at threshold
         assert tru_result["document_small"] is True
         assert tru_result["reason"] == "no_sections"
         assert "content" in tru_result
+        # Verify content is bounded by SMALL_DOC_THRESHOLD
+        assert len(tru_result["content"].encode("utf-8")) <= 8192, "no_sections content must be bounded"
         assert "sections" not in tru_result
 
     @pytest.mark.parametrize("kwargs", [{}, {"uri": ""}], ids=["no-args", "empty-uri"])
