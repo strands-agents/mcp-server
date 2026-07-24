@@ -41,6 +41,12 @@ _SHORT_PAGE_THRESHOLD = 800  # character threshold for short pages
 _BM25_K1 = 1.5  # term frequency saturation parameter
 _BM25_B = 0.75  # document length normalization parameter
 
+# Test-only hook: if set to a callable, called mid-transaction in add()/update_content()
+# after reading shared state but before writing it back. Used by concurrency tests
+# to force deterministic interleaving that exposes races hidden by the GIL.
+# Production: always None (zero overhead - guarded by `if _TEST_YIELD is not None`).
+_TEST_YIELD: object = None
+
 
 def _tokenize(text: str) -> List[str]:
     """Tokenize text into lowercase tokens."""
@@ -108,7 +114,12 @@ class IndexSearch:
             tok_lower = tok.lower()
             if tok_lower not in seen:
                 self.doc_indices.setdefault(tok_lower, []).append(idx)
-                self.doc_frequency[tok_lower] = self.doc_frequency.get(tok_lower, 0) + 1
+                # Read-modify-write on doc_frequency: the vulnerable seam.
+                # Test hook called between read and write to force interleaving.
+                current_df = self.doc_frequency.get(tok_lower, 0)
+                if _TEST_YIELD is not None:
+                    _TEST_YIELD()  # type: ignore[operator]
+                self.doc_frequency[tok_lower] = current_df + 1
                 seen.add(tok_lower)
 
         return seen
@@ -184,7 +195,11 @@ class IndexSearch:
             # Add new tokens to index
             for tok in tokens_to_add:
                 self.doc_indices.setdefault(tok, []).append(idx)
-                self.doc_frequency[tok] = self.doc_frequency.get(tok, 0) + 1
+                # Read-modify-write on doc_frequency: the vulnerable seam.
+                current_df = self.doc_frequency.get(tok, 0)
+                if _TEST_YIELD is not None:
+                    _TEST_YIELD()  # type: ignore[operator]
+                self.doc_frequency[tok] = current_df + 1
 
             # Update tracked tokens
             self.doc_tokens[idx] = new_tokens

@@ -18,6 +18,178 @@ import pytest
 from strands_mcp_server.utils import cache, indexer
 
 
+class TestBlocker1DeterministicRace:
+    """Deterministic reproduction of BLOCKER 1: race in read-modify-write on doc_frequency.
+
+    Uses the _TEST_YIELD hook to force interleaving at the critical seam:
+        current_df = doc_frequency.get(tok, 0)  # READ
+        _TEST_YIELD()                            # <-- forced context switch
+        doc_frequency[tok] = current_df + 1     # WRITE
+
+    Without the lock, both threads read the same value (0), then both write 1.
+    With the lock, operations are serialized, so no race occurs.
+
+    This test MUST FAIL when the lock is removed/bypassed.
+    """
+
+    @pytest.fixture(autouse=True)
+    def reset_test_yield(self):
+        """Ensure _TEST_YIELD is None before and after each test."""
+        indexer._TEST_YIELD = None
+        yield
+        indexer._TEST_YIELD = None
+
+    def test_deterministic_lost_increment_via_forced_interleaving(self):
+        """Force two threads to interleave at the read-modify-write seam.
+
+        Scenario WITHOUT lock:
+        - Thread A reads doc_frequency["racetoken"]=0, then yields at barrier
+        - Thread B reads doc_frequency["racetoken"]=0 (same!), then yields
+        - Both threads pass barrier
+        - Thread A writes doc_frequency["racetoken"]=1
+        - Thread B writes doc_frequency["racetoken"]=1  (LOST INCREMENT!)
+
+        Expected with lock: doc_frequency["racetoken"]=2, postings=[0,1]
+        Expected WITHOUT lock: doc_frequency["racetoken"]=1, postings=[0,1] (CORRUPTION)
+
+        The invariant df == len(postings) catches this.
+        """
+        # Use threading primitives to force interleaving
+        barrier = threading.Barrier(2, timeout=2)
+        thread_count_at_seam = [0]
+        seam_lock = threading.Lock()
+
+        def yield_at_seam():
+            """Called between read and write in the critical section.
+
+            With proper locking, only one thread enters the critical section at a time,
+            so the barrier will timeout (one waiter, never reaches 2).
+
+            Without locking, both threads can be in the critical section simultaneously,
+            both reach the barrier, and pass through - exposing the race.
+            """
+            with seam_lock:
+                thread_count_at_seam[0] += 1
+            try:
+                barrier.wait()  # Will timeout if only one thread reaches here
+            except threading.BrokenBarrierError:
+                pass  # Expected when lock serializes access
+
+        indexer._TEST_YIELD = yield_at_seam
+
+        idx = indexer.IndexSearch()
+        errors = []
+
+        doc_a = indexer.Doc(
+            uri="https://example.com/a",
+            display_title="Doc A",
+            content="racetoken",
+            index_title="doc a",
+        )
+        doc_b = indexer.Doc(
+            uri="https://example.com/b",
+            display_title="Doc B",
+            content="racetoken",
+            index_title="doc b",
+        )
+
+        def add_doc_a():
+            try:
+                idx.add(doc_a)
+            except threading.BrokenBarrierError:
+                pass  # Expected when lock serializes
+            except Exception as e:
+                errors.append(e)
+
+        def add_doc_b():
+            try:
+                idx.add(doc_b)
+            except threading.BrokenBarrierError:
+                pass  # Expected when lock serializes
+            except Exception as e:
+                errors.append(e)
+
+        t1 = threading.Thread(target=add_doc_a)
+        t2 = threading.Thread(target=add_doc_b)
+        t1.start()
+        t2.start()
+        t1.join(timeout=10)
+        t2.join(timeout=10)
+
+        assert not errors, f"Threads raised unexpected exceptions: {errors}"
+
+        # INTEGRITY CHECK: df must equal len(postings)
+        df = idx.doc_frequency.get("racetoken", 0)
+        postings = idx.doc_indices.get("racetoken", [])
+
+        # With proper locking, both increments are serialized: df=2, postings=[0,1]
+        # Without locking + forced interleaving: df=1, postings=[0,1] → CORRUPTION
+        assert df == len(postings), (
+            f"RACE DETECTED: doc_frequency['racetoken']={df} != len(postings)={len(postings)}. "
+            f"Lost increment due to unserialized read-modify-write. Postings: {postings}"
+        )
+        assert df == 2, (
+            f"Expected df=2 (both docs indexed), got df={df}. Lost increment indicates missing lock protection."
+        )
+
+    def test_deterministic_race_with_many_threads(self):
+        """Stress variant: many threads all racing on the same token.
+
+        With N threads each adding a doc with "stresstoken", expected df=N.
+        Without locking + forced interleaving, many increments will be lost.
+        """
+        num_threads = 10
+        barrier = threading.Barrier(num_threads, timeout=2)
+
+        def yield_at_seam():
+            try:
+                barrier.wait()
+            except threading.BrokenBarrierError:
+                pass  # Expected when lock serializes access
+
+        indexer._TEST_YIELD = yield_at_seam
+
+        idx = indexer.IndexSearch()
+        errors = []
+
+        docs = [
+            indexer.Doc(
+                uri=f"https://example.com/stress{i}",
+                display_title=f"Stress Doc {i}",
+                content="stresstoken",
+                index_title=f"stress doc {i}",
+            )
+            for i in range(num_threads)
+        ]
+
+        def add_doc(doc):
+            try:
+                idx.add(doc)
+            except threading.BrokenBarrierError:
+                pass  # Expected when lock serializes
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=add_doc, args=(docs[i],)) for i in range(num_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=30)
+
+        assert not errors, f"Threads raised unexpected exceptions: {errors}"
+
+        df = idx.doc_frequency.get("stresstoken", 0)
+        postings = idx.doc_indices.get("stresstoken", [])
+
+        # Critical invariant: df == len(postings)
+        assert df == len(postings), (
+            f"RACE DETECTED: df={df} != len(postings)={len(postings)}. "
+            f"Lost {len(postings) - df} increments due to concurrent read-modify-write."
+        )
+        # All N docs should be counted
+        assert df == num_threads, f"Expected df={num_threads}, got df={df}. Lost {num_threads - df} increments."
+
+
 class TestBlocker1ConcurrentIndexCorruption:
     """Reproduce BLOCKER 1: concurrent add/update_content corrupts index integrity.
 
