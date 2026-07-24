@@ -37,12 +37,13 @@ This MCP server provides curated documentation access to your GenAI tools via ll
 
 ## Features
 
-- **Smart Document Search**: TF-IDF based search with Markdown-aware scoring that prioritizes titles, headers, and code blocks
+- **Smart Document Search**: BM25-based search with Markdown-aware scoring that prioritizes titles, headers, and code blocks
 - **Section-Based Browsing**: Browse document structure via table of contents, then fetch only the section you need - more token-efficient than retrieving full pages
 - **Curated Content**: Indexes documentation from llms.txt files with clean, human-readable titles
-- **On-Demand Fetching**: Lazy-loads full document content only when needed for optimal performance
+- **On-Demand Fetching**: Lazy-loads full document content only when needed for optimal performance. Documents are indexed on first access (hydration), making body-only terms searchable after the initial fetch.
 - **Snippet Generation**: Provides contextual snippets with relevance scoring for quick overview
 - **Real URL Support**: Works with actual HTTPS URLs while maintaining backward compatibility
+- **Optional Background Prefetch**: Set `STRANDS_MCP_PREFETCH_ALL=1` to prefetch all pages at startup. This enables immediate full-text search but uses eventual consistency semantics (search results may be transiently stale during hydration).
 
 ## Prerequisites
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import re
+import threading
 from dataclasses import dataclass
 from typing import Dict, List, Set, Tuple
 
@@ -56,10 +57,17 @@ class IndexSearch:
 
     Provides document indexing and search optimized for technical documentation.
     Uses BM25 scoring with special handling for Markdown structure elements.
+
+    Thread Safety:
+        All public methods (add, update_content, search) are thread-safe.
+        A single lock guards all shared state mutations to ensure atomic
+        read-modify-write operations when used by concurrent threads
+        (e.g., background prefetch daemon + foreground ensure_page).
     """
 
     def __init__(self) -> None:
         """Initialize an empty search index."""
+        self._lock = threading.Lock()
         self.docs: List[Doc] = []
         self.doc_frequency: Dict[str, int] = {}
         self.doc_indices: Dict[str, List[int]] = {}  # token -> doc indices
@@ -106,75 +114,82 @@ class IndexSearch:
         return seen
 
     def add(self, doc: Doc) -> None:
-        """Add a document to the search index."""
-        idx = len(self.docs)
-        self.docs.append(doc)
-        self.uri_to_idx[doc.uri] = idx
+        """Add a document to the search index.
 
-        # Cache document length for BM25
-        doc_len = _count_doc_tokens(doc)
-        self._doc_lengths[idx] = doc_len
-        self._total_doc_length += doc_len
+        Thread-safe: acquires lock for the entire add operation.
+        """
+        with self._lock:
+            idx = len(self.docs)
+            self.docs.append(doc)
+            self.uri_to_idx[doc.uri] = idx
 
-        # Index tokens and track which tokens belong to this doc
-        self.doc_tokens[idx] = self._index_tokens_for_doc(idx, doc)
+            # Cache document length for BM25
+            doc_len = _count_doc_tokens(doc)
+            self._doc_lengths[idx] = doc_len
+            self._total_doc_length += doc_len
+
+            # Index tokens and track which tokens belong to this doc
+            self.doc_tokens[idx] = self._index_tokens_for_doc(idx, doc)
 
     def update_content(self, uri: str, new_content: str) -> bool:
         """Update content for an existing document and reindex.
 
         Called when document content is hydrated after initial title-only indexing.
         Idempotent - calling with the same content multiple times is safe.
+
+        Thread-safe: acquires lock for the entire update operation.
         """
-        idx = self.uri_to_idx.get(uri)
-        if idx is None:
-            return False
+        with self._lock:
+            idx = self.uri_to_idx.get(uri)
+            if idx is None:
+                return False
 
-        doc = self.docs[idx]
+            doc = self.docs[idx]
 
-        # Skip if content unchanged (idempotent)
-        if doc.content == new_content:
+            # Skip if content unchanged (idempotent)
+            if doc.content == new_content:
+                return True
+
+            # Update cached length and avgdl
+            old_length = self._doc_lengths.get(idx, 0)
+            doc.content = new_content
+            new_length = _count_doc_tokens(doc)
+            self._doc_lengths[idx] = new_length
+            self._total_doc_length = self._total_doc_length - old_length + new_length
+
+            # Get old tokens and new tokens
+            old_tokens = self.doc_tokens.get(idx, set())
+            new_tokens = self._extract_tokens(doc)
+
+            # Tokens to remove from index (in old but not in new)
+            tokens_to_remove = old_tokens - new_tokens
+
+            # Tokens to add to index (in new but not in old)
+            tokens_to_add = new_tokens - old_tokens
+
+            # Update document frequency for removed tokens
+            for tok in tokens_to_remove:
+                if tok in self.doc_frequency:
+                    self.doc_frequency[tok] -= 1
+                    if self.doc_frequency[tok] <= 0:
+                        del self.doc_frequency[tok]
+                if tok in self.doc_indices:
+                    try:
+                        self.doc_indices[tok].remove(idx)
+                    except ValueError:
+                        pass
+                    if not self.doc_indices[tok]:
+                        del self.doc_indices[tok]
+
+            # Add new tokens to index
+            for tok in tokens_to_add:
+                self.doc_indices.setdefault(tok, []).append(idx)
+                self.doc_frequency[tok] = self.doc_frequency.get(tok, 0) + 1
+
+            # Update tracked tokens
+            self.doc_tokens[idx] = new_tokens
+
             return True
-
-        # Update cached length and avgdl
-        old_length = self._doc_lengths.get(idx, 0)
-        doc.content = new_content
-        new_length = _count_doc_tokens(doc)
-        self._doc_lengths[idx] = new_length
-        self._total_doc_length = self._total_doc_length - old_length + new_length
-
-        # Get old tokens and new tokens
-        old_tokens = self.doc_tokens.get(idx, set())
-        new_tokens = self._extract_tokens(doc)
-
-        # Tokens to remove from index (in old but not in new)
-        tokens_to_remove = old_tokens - new_tokens
-
-        # Tokens to add to index (in new but not in old)
-        tokens_to_add = new_tokens - old_tokens
-
-        # Update document frequency for removed tokens
-        for tok in tokens_to_remove:
-            if tok in self.doc_frequency:
-                self.doc_frequency[tok] -= 1
-                if self.doc_frequency[tok] <= 0:
-                    del self.doc_frequency[tok]
-            if tok in self.doc_indices:
-                try:
-                    self.doc_indices[tok].remove(idx)
-                except ValueError:
-                    pass
-                if not self.doc_indices[tok]:
-                    del self.doc_indices[tok]
-
-        # Add new tokens to index
-        for tok in tokens_to_add:
-            self.doc_indices.setdefault(tok, []).append(idx)
-            self.doc_frequency[tok] = self.doc_frequency.get(tok, 0) + 1
-
-        # Update tracked tokens
-        self.doc_tokens[idx] = new_tokens
-
-        return True
 
     def _extract_tokens(self, doc: Doc) -> Set[str]:
         """Extract unique tokens from a document without indexing."""
@@ -208,6 +223,8 @@ class IndexSearch:
 
         Uses BM25 scoring with Markdown-aware enhancements for headers (4x),
         code (2x), and links (2x). Title matches receive adaptive boosting.
+
+        Thread-safe: acquires lock to ensure consistent reads of index state.
         """
 
         def _title_boost_for(doc: Doc) -> int:
@@ -248,7 +265,7 @@ class IndexSearch:
                 return 0.0
 
             # Use cached document length
-            doc_len = self._doc_lengths.get(idx, 1)
+            doc_len = doc_lengths.get(idx, 1)
             if doc_len == 0:
                 doc_len = 1
 
@@ -259,18 +276,28 @@ class IndexSearch:
             return idf * (numerator / denominator)
 
         q_tokens = [t.lower() for t in _TOKEN.findall(query)]
+
+        # Snapshot index state under lock for consistent reads
+        with self._lock:
+            docs_snapshot = list(self.docs)
+            doc_frequency_snapshot = dict(self.doc_frequency)
+            doc_indices_snapshot = {k: list(v) for k, v in self.doc_indices.items()}
+            doc_lengths = dict(self._doc_lengths)
+            total_doc_length = self._total_doc_length
+
         scores: Dict[int, float] = {}
-        N = max(len(self.docs), 1)
-        avgdl = self._get_avgdl()
+        N = max(len(docs_snapshot), 1)
+        avgdl = total_doc_length / N if N > 0 else 1.0
 
         for qt in q_tokens:
-            n = self.doc_frequency.get(qt, 0)
+            n = doc_frequency_snapshot.get(qt, 0)
             idf = math.log((N - n + 0.5) / (n + 0.5) + 1)
 
-            for idx in self.doc_indices.get(qt, []):
-                d = self.docs[idx]
-                score = _bm25_score(idx, d, qt, idf, avgdl)
-                scores[idx] = scores.get(idx, 0.0) + score
+            for idx in doc_indices_snapshot.get(qt, []):
+                if idx < len(docs_snapshot):
+                    d = docs_snapshot[idx]
+                    score = _bm25_score(idx, d, qt, idf, avgdl)
+                    scores[idx] = scores.get(idx, 0.0) + score
 
-        ranked = sorted(((score, self.docs[i]) for i, score in scores.items()), key=lambda x: x[0], reverse=True)
+        ranked = sorted(((score, docs_snapshot[i]) for i, score in scores.items()), key=lambda x: x[0], reverse=True)
         return ranked[:k]

@@ -116,6 +116,11 @@ def ensure_page(url: str) -> doc_fetcher.Page | None:
     so that body-only terms become searchable. This operation is idempotent -
     re-fetching an already-cached page has no effect.
 
+    Thread Safety:
+        If indexing fails after fetch succeeds, the page is NOT cached, allowing
+        retry on subsequent calls. This ensures body terms eventually become
+        searchable even after transient indexing failures.
+
     Args:
         url: The URL of the page to ensure is cached
 
@@ -130,11 +135,14 @@ def ensure_page(url: str) -> doc_fetcher.Page | None:
         raw = doc_fetcher.fetch_and_clean(url)
         display_title = text_processor.format_display_title(url, raw.title, _URL_TITLES)
         page = doc_fetcher.Page(url=url, title=display_title, content=raw.content)
-        _URL_CACHE[url] = page
 
-        # Update the search index with the hydrated content
+        # Update the search index with the hydrated content BEFORE caching
+        # If this fails, we leave the page un-cached so retry is possible
         if _INDEX is not None:
             _INDEX.update_content(url, raw.content)
+
+        # Only cache after indexing succeeds
+        _URL_CACHE[url] = page
 
         return page
     except Exception:
