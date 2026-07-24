@@ -64,6 +64,11 @@ class IndexSearch:
     Provides document indexing and search optimized for technical documentation.
     Uses BM25 scoring with special handling for Markdown structure elements.
 
+    Note:
+        This class is an internal implementation detail of strands-mcp-server.
+        It is NOT part of the public API and may change without notice.
+        Do not import or depend on it from external code.
+
     Thread Safety:
         All public methods (add, update_content, search) are thread-safe.
         A single lock guards all shared state mutations to ensure atomic
