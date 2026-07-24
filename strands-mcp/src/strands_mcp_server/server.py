@@ -66,13 +66,16 @@ def search_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
     top = results[: min(len(results), cache.SNIPPET_HYDRATE_MAX)]
     for _, doc in top:
         cached = url_cache.get(doc.uri)
-        if cached is None or not cached.content:
+        if cached is None:
             cache.ensure_page(doc.uri)
 
     # Build response with real content snippets when available
     return_docs: List[Dict[str, Any]] = []
     for score, doc in results:
         page = url_cache.get(doc.uri)
+        # Guard against non-Page entries (failed sentinel) — treat as not fetched
+        if not hasattr(page, "content"):
+            page = None
         snippet = text_processor.make_snippet(page, doc.display_title)
         return_docs.append(
             {

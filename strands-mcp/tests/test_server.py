@@ -4,8 +4,16 @@ from unittest.mock import patch
 
 import pytest
 
-from strands_mcp_server.server import fetch_doc
+from strands_mcp_server.server import fetch_doc, search_docs
 from strands_mcp_server.utils.doc_fetcher import Page
+
+
+class FailedSentinel:
+    """Minimal sentinel simulating a negatively cached failed fetch entry.
+    
+    Has no .content attribute — same shape as cache._FailedEntry.
+    """
+    pass
 
 
 @patch("strands_mcp_server.server.cache")
@@ -152,3 +160,47 @@ class TestFetchDocErrors:
         tru_result = fetch_doc(uri="https://strandsagents.com/missing.md")
 
         assert tru_result["error"] == "fetch failed"
+
+
+@patch("strands_mcp_server.server.cache")
+class TestSearchDocsWithNegativeCache:
+    """Tests for search_docs resilience with negatively cached failed entries."""
+
+    def test_failed_cache_entry_does_not_crash_hydration_loop(self, mock_cache):
+        """search_docs must not crash when url_cache contains a failed sentinel."""
+        mock_cache.ensure_ready.return_value = None
+        mock_cache.SNIPPET_HYDRATE_MAX = 5
+
+        # Set up a mock index that returns results for a failed URL
+        mock_index = mock_cache.get_index.return_value
+        mock_doc = mock_index.search.return_value = [
+            (0.9, type("Doc", (), {"uri": "https://strandsagents.com/failed.md", "display_title": "Failed Doc"})())
+        ]
+
+        # url_cache contains a FailedSentinel for that URL
+        mock_cache.get_url_cache.return_value = {
+            "https://strandsagents.com/failed.md": FailedSentinel(),
+        }
+
+        # Must not raise AttributeError
+        result = search_docs("test query")
+        assert isinstance(result, list)
+
+    def test_failed_entry_returns_title_as_snippet(self, mock_cache):
+        """When a search result's page has a failed entry, the snippet should
+        fall back to the display title rather than crashing."""
+        mock_cache.ensure_ready.return_value = None
+        mock_cache.SNIPPET_HYDRATE_MAX = 5
+
+        mock_index = mock_cache.get_index.return_value
+        mock_doc = mock_index.search.return_value = [
+            (0.9, type("Doc", (), {"uri": "https://strandsagents.com/failed.md", "display_title": "Failed Doc"})())
+        ]
+
+        mock_cache.get_url_cache.return_value = {
+            "https://strandsagents.com/failed.md": FailedSentinel(),
+        }
+
+        result = search_docs("test query")
+        assert len(result) == 1
+        assert result[0]["snippet"] == "Failed Doc"
