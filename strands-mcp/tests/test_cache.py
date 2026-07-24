@@ -47,51 +47,59 @@ class TestNegativeCache:
 
     def test_successful_fetch_after_ttl_expiry_stores_in_positive_cache(self):
         """After blackout window expires, a retry succeeds and URL moves to positive cache."""
-        # First call fails — stored in _FAILED_FETCHES
-        with patch.object(doc_fetcher, "fetch_and_clean", side_effect=ConnectionError("timeout")):
-            cache.ensure_page("https://strandsagents.com/valid.md")
-            assert "https://strandsagents.com/valid.md" in cache._FAILED_FETCHES
-            assert cache._URL_CACHE.get("https://strandsagents.com/valid.md") is None
+        url = "https://strandsagents.com/valid.md"
+        failed_at = 100.0
+        page = doc_fetcher.Page(url=url, title="Valid Doc", content="Some content.")
 
-        # Simulate TTL expiry by clearing the failure record
-        cache._FAILED_FETCHES.clear()
+        # First call fails — stored in _FAILED_FETCHES at timestamp 100.0
+        with (
+            patch.object(cache.time, "monotonic", return_value=failed_at),
+            patch.object(doc_fetcher, "fetch_and_clean", side_effect=ConnectionError("timeout")),
+        ):
+            assert cache.ensure_page(url) is None
+            assert cache._FAILED_FETCHES.get(url) == failed_at
+            assert cache._URL_CACHE.get(url) is None
 
-        # Next call succeeds — stored in positive cache
-        mock_page = doc_fetcher.Page(
-            url="https://strandsagents.com/valid.md",
-            title="Valid Doc",
-            content="Some content.",
-        )
-        with patch.object(doc_fetcher, "fetch_and_clean", return_value=mock_page):
-            tru_result = cache.ensure_page("https://strandsagents.com/valid.md")
+        # Advance clock past TTL boundary — retry the fetch
+        with (
+            patch.object(cache.time, "monotonic", return_value=failed_at + cache.NEGATIVE_CACHE_TTL),
+            patch.object(doc_fetcher, "fetch_and_clean", return_value=page),
+        ):
+            tru_result = cache.ensure_page(url)
 
             assert tru_result is not None
             assert tru_result.title == "Valid Doc"
             # URL should be in the positive cache now
-            assert cache._URL_CACHE.get("https://strandsagents.com/valid.md") is not None
+            assert cache._URL_CACHE.get(url) is not None
 
     def test_no_negative_cache_for_same_url_different_session_after_ttl(self):
-        """After TTL expires, the fetch is retried (tested by bypassing TTL check).
+        """After TTL expires, the fetch is retried."""
+        url = "https://strandsagents.com/retry.md"
+        failed_at = 200.0
+        page = doc_fetcher.Page(url=url, title="Retry Doc", content="Content now available.")
 
-        We simulate TTL expiry by clearing _FAILED_FETCHES, then verify the
-        fetch is attempted again.
-        """
-        # First call fails
-        with patch.object(doc_fetcher, "fetch_and_clean", side_effect=ConnectionError("timeout")):
-            cache.ensure_page("https://strandsagents.com/retry.md")
-            assert "https://strandsagents.com/retry.md" in cache._FAILED_FETCHES
+        # First call fails — stored in _FAILED_FETCHES at timestamp 200.0
+        with (
+            patch.object(cache.time, "monotonic", return_value=failed_at),
+            patch.object(doc_fetcher, "fetch_and_clean", side_effect=ConnectionError("timeout")),
+        ):
+            assert cache.ensure_page(url) is None
+            assert cache._FAILED_FETCHES.get(url) == failed_at
 
-        # Clear the failure record (simulates TTL expiry)
-        cache._FAILED_FETCHES.clear()
+        # Hit negative cache (just before expiry)
+        with (
+            patch.object(cache.time, "monotonic", return_value=failed_at + cache.NEGATIVE_CACHE_TTL - 0.001),
+            patch.object(doc_fetcher, "fetch_and_clean") as mock_fetch,
+        ):
+            assert cache.ensure_page(url) is None
+            mock_fetch.assert_not_called()
 
-        # Second call — should retry the fetch
-        mock_page = doc_fetcher.Page(
-            url="https://strandsagents.com/retry.md",
-            title="Retry Doc",
-            content="Content now available.",
-        )
-        with patch.object(doc_fetcher, "fetch_and_clean", return_value=mock_page):
-            tru_result = cache.ensure_page("https://strandsagents.com/retry.md")
+        # Advance past TTL boundary — fetch is retried
+        with (
+            patch.object(cache.time, "monotonic", return_value=failed_at + cache.NEGATIVE_CACHE_TTL),
+            patch.object(doc_fetcher, "fetch_and_clean", return_value=page),
+        ):
+            tru_result = cache.ensure_page(url)
 
             assert tru_result is not None
             assert tru_result.title == "Retry Doc"
